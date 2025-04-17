@@ -435,10 +435,10 @@ const Login: React.FC = () => {
           sessionStorage.removeItem('returnToBooking');
           sessionStorage.removeItem('fromGroomingRegister');
           // 导航到预约页面
-          window.location.href = '/grooming-appointment';
+          navigate('/grooming-appointment', { replace: true });
         } else {
           // 使用replace确保用户不能返回到验证页面
-          window.location.href = '/member-dashboard';
+          navigate('/member-dashboard', { replace: true });
         }
       }, 2000);
       
@@ -498,7 +498,7 @@ const Login: React.FC = () => {
         
         // 添加1秒后自动重新加载页面的功能
         setTimeout(() => {
-          window.location.href = '/login';
+          navigate('/login', { replace: true });
         }, 1000);
       }
     } catch (err: any) {
