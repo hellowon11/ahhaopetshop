@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const BACKEND_URL = process.env.BACKEND_URL || 'https://ahhaopetshop-backend.onrender.com';
-const PING_INTERVAL = 3 * 60 * 1000; // 3 minutes in milliseconds
+const PING_INTERVAL = 10 * 60 * 1000; // 10 minutes in milliseconds
 
 // 检查4003端口是否被占用
 const checkPort = (port: number): Promise<boolean> => {
