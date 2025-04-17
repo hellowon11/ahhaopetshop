@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, useParams } from 'react-router-dom';
 import { CheckCircle, XCircle } from 'lucide-react';
 import axios from 'axios';
 
@@ -11,7 +11,9 @@ interface ResetPasswordResponse {
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const location = useLocation();
+  const params = useParams<{ token?: string }>();
+  const [token, setToken] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,14 +21,41 @@ const ResetPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // 页面加载时检查token
+  // 页面加载时尝试从多个位置获取token
   useEffect(() => {
-    if (!token) {
+    // 首先尝试从URL路径参数中获取token (新方法，更可靠)
+    let foundToken = params.token;
+    
+    // 如果没有找到，尝试从URL查询参数获取
+    if (!foundToken) {
+      foundToken = searchParams.get('token');
+    }
+    
+    // 如果没有找到，尝试从URL hash中获取
+    if (!foundToken && location.hash) {
+      const hashParams = new URLSearchParams(location.hash.substring(1));
+      foundToken = hashParams.get('token');
+    }
+    
+    // 检查是否是Render的SPA路由问题（例如：/reset-password:1?token=xyz）
+    if (!foundToken && location.pathname.includes(':')) {
+      const pathWithParams = location.pathname.replace(/:/g, '?');
+      const paramsMatch = pathWithParams.match(/\?token=([^&]+)/);
+      if (paramsMatch && paramsMatch[1]) {
+        foundToken = paramsMatch[1];
+      }
+    }
+    
+    // 设置找到的token
+    setToken(foundToken);
+    
+    if (!foundToken) {
+      console.error('No token found in URL:', location);
       setError('Invalid reset token - No token provided in URL');
     } else {
-      console.log('Token found in URL:', token.substring(0, 5) + '...' + token.substring(token.length - 5));
+      console.log('Token found in URL:', foundToken.substring(0, 5) + '...' + foundToken.substring(foundToken.length - 5));
     }
-  }, [token]);
+  }, [searchParams, location, params]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +104,10 @@ const ResetPassword: React.FC = () => {
       
       if (err.response?.data?.message === 'Invalid or expired reset token') {
         setError('The password reset link has expired. Please request a new one.');
+      } else if (err.response?.data?.message === 'Reset token has expired') {
+        setError('The password reset link has expired. Please request a new one.');
+      } else if (err.response?.data?.message === 'Invalid reset token') {
+        setError('Invalid reset token. Please request a new password reset link.');
       } else {
         setError(err.response?.data?.message || 'Failed to reset password. Please try again.');
       }

@@ -2,8 +2,11 @@ services:
   - type: web
     name: ahhaopetshop-frontend
     env: static
-    buildCommand: npm install && npm run build
+    buildCommand: npm run build
     staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: 18.0.0
     headers:
       - path: /**/*.css
         name: Content-Type

@@ -438,8 +438,13 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     await user.save();
     console.log('Reset token generated and saved:', resetToken.substring(0, 5) + '...' + resetToken.substring(resetToken.length - 5));
 
-    // 构建重置URL - 不使用encodeURIComponent
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    // 构建重置URL - 使用路径参数而非查询参数，提高兼容性
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    
+    // 确保baseUrl没有结尾的斜杠
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    // 创建重置链接，使用路径参数而非查询参数
+    const resetUrl = `${cleanBaseUrl}/reset-password/${resetToken}`;
     console.log('Reset URL generated (partial):', resetUrl.substring(0, 60) + '...');
 
     const mailOptions = {
@@ -509,12 +514,29 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
 // 重置密码
 router.post('/reset-password', async (req: Request, res: Response) => {
   try {
-    const { token, newPassword } = req.body;
+    let { token, newPassword } = req.body;
     
     console.log('Reset password request received');
-    console.log('Token received:', token ? `${token.substring(0, 5)}...${token.substring(token.length - 5)}` : 'undefined');
     
-    if (!token) {
+    // 处理token格式化和净化
+    if (token) {
+      // 移除前后空格
+      token = token.trim();
+      // 尝试URL解码（如果被编码）
+      try {
+        const decodedToken = decodeURIComponent(token);
+        // 如果解码后不同，说明可能是被编码过的
+        if (decodedToken !== token) {
+          console.log('Token was URL encoded, decoded successfully');
+          token = decodedToken;
+        }
+      } catch (e) {
+        // 解码失败，保持原样
+        console.log('Token decoding failed, using original token');
+      }
+      
+      console.log('Token received (processed):', token ? `${token.substring(0, 5)}...${token.substring(token.length - 5)}` : 'undefined');
+    } else {
       console.log('Reset failed: No token provided');
       return res.status(400).json({ message: 'Reset token is required' });
     }

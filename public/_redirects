@@ -1,4 +1,4 @@
-# 确保所有路由都重定向到 index.html
+# 确保所有路由都重定向到 index.html (包括查询参数)
 /*  /index.html  200
 
 # 设置 MIME 类型

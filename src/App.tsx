@@ -41,6 +41,7 @@ const App: React.FC = () => {
               }
             />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/all-pets" element={<AllPets />} />
             <Route
               path="/admin-portal"
@@ -59,6 +60,7 @@ const App: React.FC = () => {
                 </PrivateRoute>
               }
             />
+            <Route path="*" element={<MainApp />} />
           </Routes>
         </NavigationProvider>
       </AuthProvider>
