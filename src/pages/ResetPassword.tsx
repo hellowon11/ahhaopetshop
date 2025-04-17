@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle, XCircle } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:4003/api';
+const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:4003/api';
 
 interface ResetPasswordResponse {
   message: string;

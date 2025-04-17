@@ -733,7 +733,7 @@ const GroomingAppointment: React.FC = () => {
               // 使用axios直接创建通知
               const token = localStorage.getItem('token');
               if (token) {
-                await axios.post('http://localhost:4003/api/notifications/create', notificationData, {
+                await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:4003'}/api/notifications/create`, notificationData, {
                   headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -795,9 +795,11 @@ const GroomingAppointment: React.FC = () => {
     const fetchServiceInfo = async () => {
       try {
         const services = await apiService.services.getGroomingServices();
-        const service = services.find((s: GroomingService) => s.name === formData.serviceType);
-        setSelectedService(service || null);
-    } catch (error) {
+        if (Array.isArray(services)) {
+          const service = services.find((s) => s.name === formData.serviceType);
+          setSelectedService(service || null);
+        }
+      } catch (error) {
         console.error('Failed to fetch service info:', error);
       }
     };
@@ -1062,10 +1064,10 @@ const GroomingAppointment: React.FC = () => {
                             <ul className="text-sm sm:text-sm">
                             {service.features.map((feature, index) => (
                                 <li key={index} className="flex items-start mb-1.5 sm:mb-2">
-                                  <Check className="w-4 h-4 sm:w-4 sm:h-4 text-rose-500 mt-0.5 mr-2 sm:mr-2 flex-shrink-0" />
+                                  <Check className="w-4 h-4 sm:w-4 sm:h-4 text-rose-500 mt-0.5 mr-2 sm:mr-2 flex-shrink0" />
                                   <span className="text-gray-600">{feature}</span>
-                              </li>
-                            ))}
+                                </li>
+                              ))}
                           </ul>
                       </div>
                     ))}
