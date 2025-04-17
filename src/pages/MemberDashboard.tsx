@@ -476,36 +476,36 @@ const MemberDashboard: React.FC = () => {
     }
   };
 
-  // 处理宠物更新
+  // Handle pet update
   const handleUpdatePet = async (id: string, petData: Partial<Pet>) => {
     try {
       const updatedPet = await apiService.pets.update(id, petData);
       setPets(pets.map(pet => pet._id === id ? updatedPet : pet));
     } catch (error) {
-      console.error('更新宠物失败:', error);
-      setError('更新宠物失败，请重试');
+      console.error('Failed to update pet:', error);
+      setError('Failed to update pet. Please try again.');
     }
   };
 
-  // 处理宠物删除
+  // Handle pet deletion
   const handleDeletePet = async (id: string) => {
     try {
       await apiService.pets.delete(id);
       setPets(pets.filter(pet => pet._id !== id));
     } catch (error) {
-      console.error('删除宠物失败:', error);
-      setError('删除宠物失败，请重试');
+      console.error('Failed to delete pet:', error);
+      setError('Failed to delete pet. Please try again.');
     }
   };
 
-  // 处理预约添加
+  // Handle appointment addition
   const handleAddAppointment = async (appointmentData: Omit<Appointment, '_id'>) => {
     try {
       const newAppointment = await apiService.appointments.add(appointmentData);
       setAppointments([...appointments, newAppointment]);
     } catch (error) {
-      console.error('添加预约失败:', error);
-      setError('添加预约失败，请重试');
+      console.error('Failed to add appointment:', error);
+      setError('Failed to add appointment. Please try again.');
     }
   };
 
