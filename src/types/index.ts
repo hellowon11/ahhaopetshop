@@ -95,4 +95,21 @@ export interface DayCareOption {
   description: string;
   price: number;
   displayPrice?: string;
+}
+
+// PetListing 接口
+export interface PetListing {
+  id: string;
+  petId: string;
+  name: string;
+  breed: string;
+  age: string;
+  gender: 'Male' | 'Female';
+  imageUrl: string;
+  type: 'dog' | 'cat';
+  description?: string;
+  isForSale: boolean;
+  status?: 'Listed' | 'Unlisted' | 'Sold';
+  createdAt: Date;
+  updatedAt: Date;
 } 
