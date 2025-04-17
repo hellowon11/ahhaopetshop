@@ -136,7 +136,7 @@ router.get('/availability/:date/:time', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     console.log('Creating new appointment, user data:', req.body.ownerName);
-    console.log('Appointment data:', req.body);
+    console.log('Appointment data:', JSON.stringify(req.body));
     
     const {
       petName,
@@ -158,6 +158,23 @@ router.post('/', async (req: Request, res: Response) => {
     if (!petName || !petType || !date || !time || !serviceType || !ownerName || !ownerPhone || !ownerEmail || !duration) {
       return res.status(400).json({ message: 'Please provide all required information' });
     }
+
+    // 标准化服务类型名称
+    let normalizedServiceType = serviceType;
+    console.log('原始服务类型:', serviceType);
+    
+    // 规范化服务类型
+    if (typeof serviceType === 'string') {
+      if (serviceType.includes('Premium') || serviceType.toLowerCase().includes('full')) {
+        normalizedServiceType = 'Full Grooming';
+      } else if (serviceType.includes('Spa') || serviceType.toLowerCase().includes('spa')) {
+        normalizedServiceType = 'Spa Treatment';
+      } else {
+        normalizedServiceType = 'Basic Grooming';
+      }
+    }
+    
+    console.log('规范化后的服务类型:', normalizedServiceType);
 
     // 获取系统配置的最大预约数
     const settings = await AppointmentSettings.findOne({ settingName: 'default' });
@@ -198,7 +215,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     // 计算价格
     let totalPrice = 0;
-    switch (serviceType) {
+    switch (normalizedServiceType) {
       case 'Basic Grooming':
         totalPrice = 60;
         break;
@@ -222,9 +239,9 @@ router.post('/', async (req: Request, res: Response) => {
     // 检查是否是会员并应用折扣
     const memberUser = await User.findOne({ email: ownerEmail });
     if (memberUser) {
-      if (serviceType === 'Spa Treatment') {
+      if (normalizedServiceType === 'Spa Treatment') {
         totalPrice *= 0.9; // 10% discount for Spa
-      } else if (serviceType === 'Basic Grooming' || serviceType === 'Full Grooming') {
+      } else if (normalizedServiceType === 'Basic Grooming' || normalizedServiceType === 'Full Grooming') {
         totalPrice *= 0.92; // 8% discount for Basic and Full Grooming
       }
     }
@@ -235,7 +252,7 @@ router.post('/', async (req: Request, res: Response) => {
       petType,
       date,
       time,
-      serviceType,
+      serviceType: normalizedServiceType,
       duration,
       dayCareOptions,
       totalPrice,
@@ -341,7 +358,7 @@ router.delete('/:id', auth, async (req: AuthRequest, res: Response) => {
 router.post('/guest', async (req: Request, res: Response) => {
   try {
     console.log('Creating new guest appointment');
-    console.log('Appointment data:', req.body);
+    console.log('Appointment data:', JSON.stringify(req.body));
     
     const {
       petName,
@@ -363,6 +380,23 @@ router.post('/guest', async (req: Request, res: Response) => {
     if (!petName || !petType || !date || !time || !serviceType || !ownerName || !ownerPhone || !ownerEmail || !duration) {
       return res.status(400).json({ message: 'Please provide all required information' });
     }
+
+    // 标准化服务类型名称
+    let normalizedServiceType = serviceType;
+    console.log('原始服务类型:', serviceType);
+    
+    // 规范化服务类型
+    if (typeof serviceType === 'string') {
+      if (serviceType.includes('Premium') || serviceType.toLowerCase().includes('full')) {
+        normalizedServiceType = 'Full Grooming';
+      } else if (serviceType.includes('Spa') || serviceType.toLowerCase().includes('spa')) {
+        normalizedServiceType = 'Spa Treatment';
+      } else {
+        normalizedServiceType = 'Basic Grooming';
+      }
+    }
+    
+    console.log('规范化后的服务类型:', normalizedServiceType);
 
     // 获取预约的开始时间（小时）
     const startHour = parseInt(time.split(':')[0]);
@@ -399,7 +433,7 @@ router.post('/guest', async (req: Request, res: Response) => {
 
     // 计算价格
     let totalPrice = 0;
-    switch (serviceType) {
+    switch (normalizedServiceType) {
       case 'Basic Grooming':
         totalPrice = 60;
         break;
@@ -423,9 +457,9 @@ router.post('/guest', async (req: Request, res: Response) => {
     // 检查是否是会员并应用折扣
     const user = await User.findOne({ email: ownerEmail });
     if (user) {
-      if (serviceType === 'Spa Treatment') {
+      if (normalizedServiceType === 'Spa Treatment') {
         totalPrice *= 0.9; // 10% discount for Spa
-      } else if (serviceType === 'Basic Grooming' || serviceType === 'Full Grooming') {
+      } else if (normalizedServiceType === 'Basic Grooming' || normalizedServiceType === 'Full Grooming') {
         totalPrice *= 0.92; // 8% discount for Basic and Full Grooming
       }
     }
@@ -436,7 +470,7 @@ router.post('/guest', async (req: Request, res: Response) => {
       petType,
       date,
       time,
-      serviceType,
+      serviceType: normalizedServiceType,
       duration,
       dayCareOptions,
       totalPrice,

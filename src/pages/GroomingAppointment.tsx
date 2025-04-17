@@ -591,13 +591,18 @@ const GroomingAppointment: React.FC = () => {
     e.preventDefault();
     
     if (!validateForm()) {
-      // Scroll to first error
-      const errorSection = document.querySelector('.text-red-600');
-      if (errorSection) {
-        errorSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-        return;
-      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setSubmitError('Please fill out all required fields and check for errors.');
+      return;
+    }
+
+    console.log('提交表单，选择的服务类型ID:', formData.serviceType);
+    console.log('服务名称对照:', backendServices.map(s => `${s.id}: ${s.name}`));
+    
+    // 检查是否已提交
+    if (isSubmitting) {
+      return;
+    }
 
     // 额外验证：检查选择的时间槽是否仍然可用（预约数量未超限）
     const selectedTimeSlot = timeSlots.find(slot => slot.time === formData.time);
@@ -639,6 +644,20 @@ const GroomingAppointment: React.FC = () => {
           break;
         case 'spa':
           serviceTypeName = 'Spa Treatment';
+          break;
+        default:
+          // 尝试从服务名称直接匹配
+          const matchedService = backendServices.find(s => s.id === formData.serviceType);
+          if (matchedService) {
+            if (matchedService.name === 'Premium Grooming') {
+              serviceTypeName = 'Full Grooming';
+            } else if (matchedService.name === 'Spa Treatment') {
+              serviceTypeName = 'Spa Treatment';
+            } else {
+              serviceTypeName = 'Basic Grooming';
+            }
+          }
+          console.log(`将服务类型${formData.serviceType}映射为${serviceTypeName}`);
           break;
       }
       
