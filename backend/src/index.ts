@@ -4,6 +4,11 @@ import app from './app';
 
 dotenv.config();
 
+// 设置时区为马来西亚时间 (UTC+8)
+process.env.TZ = 'Asia/Kuala_Lumpur';
+console.log(`服务器时区已设置为: ${process.env.TZ}`);
+console.log(`当前服务器时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Kuala_Lumpur' })}`);
+
 // 数据库连接
 const connectDB = async () => {
   try {
