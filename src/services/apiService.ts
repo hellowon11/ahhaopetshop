@@ -283,7 +283,7 @@ export const apiService = {
         );
         
         // 获取时间槽可用性
-        const response = await api.get(`/api/appointments/available-slots?date=${date}`);
+        const response = await api.get(`/appointments/available-slots?date=${date}`);
         const availableSlots = response.data as Record<string, number>;
         
         // 处理每个时间槽的可用数量

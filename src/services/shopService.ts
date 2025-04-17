@@ -43,7 +43,7 @@ export const shopService = {
         return cachedShopInfo;
       }
 
-      const response = await api.get('/api/shop-information');
+      const response = await api.get('/shop-information');
       cachedShopInfo = response.data;
       
       // 通知所有监听器
@@ -72,7 +72,7 @@ export const shopService = {
   // 刷新店铺信息
   refreshShopInformation: async () => {
     try {
-      const response = await api.get('/api/shop-information');
+      const response = await api.get('/shop-information');
       cachedShopInfo = response.data;
       
       // 通知所有监听器

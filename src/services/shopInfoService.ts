@@ -37,7 +37,7 @@ export const shopInfoService = {
   // 获取店铺信息
   getShopInfo: async () => {
     try {
-      const response = await api.get('/api/shop-information');
+      const response = await api.get('/shop-information');
       cachedShopInfo = response.data;
       return cachedShopInfo;
     } catch (error) {
@@ -49,7 +49,7 @@ export const shopInfoService = {
   // 强制刷新店铺信息
   refreshShopInfo: async () => {
     try {
-      const response = await api.get('/api/shop-information');
+      const response = await api.get('/shop-information');
       cachedShopInfo = response.data;
       return cachedShopInfo;
     } catch (error) {
@@ -66,7 +66,7 @@ export const shopInfoService = {
   // 更新店铺信息
   updateShopInfo: async (data: Partial<ShopInformation>) => {
     try {
-      const response = await api.put('/api/shop-information', data);
+      const response = await api.put('/shop-information', data);
       cachedShopInfo = response.data;
       return cachedShopInfo;
     } catch (error) {

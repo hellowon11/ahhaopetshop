@@ -733,7 +733,7 @@ const GroomingAppointment: React.FC = () => {
               // 使用axios直接创建通知
               const token = localStorage.getItem('token');
               if (token) {
-                await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:4003'}/api/notifications/create`, notificationData, {
+                await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:4003'}/notifications/create`, notificationData, {
                   headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
