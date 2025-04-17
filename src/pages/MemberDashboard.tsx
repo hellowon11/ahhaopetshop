@@ -597,16 +597,16 @@ const MemberDashboard: React.FC = () => {
 
   // 更新通知面板渲染
   const renderNotifications = () => (
-    <div className="notification-dropdown fixed top-[4.5rem] right-4 w-96 bg-white rounded-lg shadow-2xl border border-gray-200/80 py-2 z-50 backdrop-blur-sm backdrop-saturate-150">
+    <div className="notification-dropdown fixed top-[4.5rem] right-4 w-80 md:w-96 bg-white rounded-lg shadow-2xl border border-gray-200/80 py-2 z-50 backdrop-blur-sm backdrop-saturate-150">
       {/* 头部操作栏 */}
-      <div className="px-4 py-3 border-b border-gray-100">
+      <div className="px-3 md:px-4 py-3 border-b border-gray-100">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+          <h3 className="text-base md:text-lg font-semibold text-gray-900">Notifications</h3>
           <div className="flex items-center space-x-2">
             {notifications.length > 0 && (
               <button
                 onClick={toggleSelectionMode}
-                className="text-sm text-gray-600 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100"
+                className="text-xs md:text-sm text-gray-600 hover:text-gray-800 px-1.5 md:px-2 py-1 rounded hover:bg-gray-100"
               >
                 {isSelectionMode ? 'Cancel' : 'Select'}
               </button>
@@ -614,7 +614,7 @@ const MemberDashboard: React.FC = () => {
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-sm text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50"
+                className="text-xs md:text-sm text-blue-600 hover:text-blue-700 px-1.5 md:px-2 py-1 rounded hover:bg-blue-50"
               >
                 Read All
               </button>
@@ -664,7 +664,7 @@ const MemberDashboard: React.FC = () => {
           notifications.map(notification => (
             <div
               key={notification._id}
-              className={`px-4 py-3 hover:bg-gray-50 relative group border-b border-gray-100 last:border-b-0 ${
+              className={`px-3 md:px-4 py-2 md:py-3 hover:bg-gray-50 relative group border-b border-gray-100 last:border-b-0 ${
                 !notification.isRead ? 'bg-blue-50/80 backdrop-blur-sm' : ''
               } ${isSelectionMode ? 'cursor-pointer' : ''}`}
               onClick={(e) => {
@@ -697,10 +697,10 @@ const MemberDashboard: React.FC = () => {
                     </svg>
                   </div>
                   <div className="flex-grow">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-xs md:text-sm font-medium text-gray-900">
                       {notification.title}
                     </p>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-xs md:text-sm text-gray-600 mt-1">
                       {notification.message}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
@@ -819,7 +819,7 @@ const MemberDashboard: React.FC = () => {
                   {/* Profile Dropdown */}
                   {showProfile && (
                     <div 
-                      className="profile-dropdown absolute right-0 mt-2 w-80 bg-white rounded-lg border border-slate-200 py-2 z-50"
+                      className="profile-dropdown absolute right-0 mt-2 w-64 md:w-80 bg-white rounded-lg border border-slate-200 py-2 z-50"
                       onClick={(e) => {
                         // 防止点击下拉菜单内部时触发外部点击事件
                         e.stopPropagation();
@@ -914,10 +914,10 @@ const MemberDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto pb-12 px-4 sm:px-6 lg:px-8">
           {/* 欢迎部分 - 移动端优化 */}
           <div className="mb-6 p-2">
-            <div className="flex items-center">
+            <div className="flex flex-col md:flex-row md:items-center">
               <button
                 onClick={handleBackToHome}
-                className="inline-flex items-center px-4 py-2 mr-4 bg-white text-slate-700 
+                className="inline-flex items-center px-4 py-2 mb-4 md:mb-0 md:mr-4 bg-white text-slate-700 
                         rounded-lg shadow-sm hover:bg-slate-50 border border-slate-200
                         transition-colors duration-200 group"
               >
@@ -925,8 +925,9 @@ const MemberDashboard: React.FC = () => {
                 Home
               </button>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Welcome back, {userProfile.name || 'John'}</h2>
-                <p className="text-gray-600 mt-1">Manage your pets and appointments</p>
+                <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
+                <p className="text-gray-800 font-medium mt-1">{userProfile.name || 'Member'}</p>
+                <p className="text-gray-600 text-sm mt-1">Manage your pets and appointments</p>
               </div>
             </div>
           </div>
