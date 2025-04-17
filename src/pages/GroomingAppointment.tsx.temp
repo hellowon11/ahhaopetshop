@@ -1,0 +1,2229 @@
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { Calendar, Clock, Scissors, Dog, Cat, ChevronLeft, User, Home, Bath, Sparkles, ArrowLeft, ArrowRight, ChevronDown, AlertTriangle, Check } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import emailjs from '@emailjs/browser';
+import { apiService } from '../services/apiService';
+import { useAuth } from '../contexts/AuthContext';
+import { Appointment } from '../types';
+import { convertToUTC, convertToMalaysiaTime } from '../utils/dateUtils';
+
+// Initialize EmailJS with your public key
+emailjs.init("5hA17zkuJrKTq5kny");
+
+// Add service type interface
+interface GroomingService {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  displayPrice: string;
+  duration: number;
+  displayDuration: string;
+  features: { text: string }[];
+  discount: number;
+  recommended: boolean;
+}
+
+interface DayCareOption {
+  type: string;
+  price: number;
+  displayPrice: string;
+  description: string;
+}
+
+const GroomingAppointment: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, isIntentionalLogin } = useAuth();
+  
+  // Initialize form data without user info
+  const [formData, setFormData] = useState<FormData>({
+    petName: '',
+    petType: 'dog',
+    date: '',
+    time: '',
+    serviceType: '',
+    notes: '',
+    ownerName: '',
+    ownerPhone: '',
+    ownerEmail: '',
+    dayCare: {
+      enabled: false,
+      type: 'daily',
+      days: 1
+    }
+  });
+
+  const [emailError, setEmailError] = useState<string>('');
+  const [nameError, setNameError] = useState<string>('');
+  const [phoneError, setPhoneError] = useState<string>('');
+  const [petNameError, setPetNameError] = useState<string>('');
+  const [bookedAppointments, setBookedAppointments] = useState<BookedAppointment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const formRef = useRef<HTMLFormElement>(null);
+  const serviceTypeRef = useRef<HTMLDivElement>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const timeSelectionRef = useRef<HTMLDivElement>(null);
+  const [formErrors, setFormErrors] = useState<FormErrors>({
+    name: '',
+    email: '',
+    phone: '',
+    petName: '',
+    date: '',
+    time: ''
+  });
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  // Initialize isMember as false by default
+  const [isMember, setIsMember] = useState<boolean>(false);
+  const [totalPrice, setTotalPrice] = useState<number>(0);
+  const [discount, setDiscount] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string>('');
+  const [submitSuccess, setSubmitSuccess] = useState<boolean>(false);
+  const [isPriceDropdownOpen, setIsPriceDropdownOpen] = useState<boolean>(false);
+
+  // Add state for services and day care options
+  const [backendServices, setBackendServices] = useState<GroomingService[]>([]);
+  const [backendDayCareOptions, setBackendDayCareOptions] = useState<DayCareOption[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
+
+  const whatsappNumber = "60102568641"; // 添加 WhatsApp 号码
+
+  // 从后端获取服务数据
+  useEffect(() => {
+    const fetchServicesData = async () => {
+      try {
+        // 使用静态数据作为后备方案
+        const servicesData = await apiService.services.getGroomingServices()
+          .catch(() => []);
+        
+        const dayCareOptionsData = await apiService.services.getDayCareOptions()
+          .catch(() => []);
+        
+        if (servicesData && servicesData.length > 0) {
+          setBackendServices(servicesData);
+          console.log('Loaded services from backend:', servicesData);
+        }
+        
+        if (dayCareOptionsData && dayCareOptionsData.length > 0) {
+          setBackendDayCareOptions(dayCareOptionsData);
+          console.log('Loaded day care options from backend:', dayCareOptionsData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch services data:', error);
+      }
+    };
+
+    fetchServicesData();
+  }, []);
+  
+  // 保留现有服务类型定义，但当后端数据可用时使用这些数据
+  const serviceTypes = backendServices.length > 0 
+    ? backendServices.map(service => ({
+        id: service.id, 
+        name: service.name, 
+        description: service.description,
+        price: service.displayPrice,
+        duration: service.displayDuration,
+        icon: service.id === 'basic' 
+          ? <Scissors className="w-8 h-8 text-rose-500 mb-2" />
+          : service.id === 'full' 
+            ? <Sparkles className="w-8 h-8 text-rose-500 mb-2" />
+            : <Bath className="w-8 h-8 text-rose-500 mb-2" />,
+        features: service.features.map(f => f.text),
+        recommended: service.recommended
+      }))
+    : [
+        { 
+          id: 'basic', 
+          name: 'Basic Grooming', 
+          description: 'Bath, brush, nail trim, ear cleaning',
+          price: 'RM 60',
+          duration: '1 hour',
+          icon: <Scissors className="w-8 h-8 text-rose-500 mb-2" />,
+          features: [
+            'Bath with premium shampoo',
+            'Brushing and detangling',
+            'Nail trimming',
+            'Ear cleaning'
+          ]
+        },
+        { 
+          id: 'full', 
+          name: 'Full Grooming', 
+          description: 'Basic + haircut, styling',
+          price: 'RM 120',
+          duration: '3 hours',
+          icon: <Sparkles className="w-8 h-8 text-rose-500 mb-2" />,
+          features: [
+            'Everything in Basic Grooming',
+            'Professional haircut',
+            'Custom styling',
+            'Sanitary trim',
+            'Paw pad trimming'
+          ]
+        },
+        { 
+          id: 'spa', 
+          name: 'Spa Treatment', 
+          description: 'The ultimate luxurious pet relaxation',
+          price: 'RM 220',
+          duration: '4 hours',
+          icon: <Bath className="w-8 h-8 text-rose-500 mb-2" />,
+          features: [
+            'Everything in Full Grooming',
+            'Aromatherapy bath',
+            'Deep conditioning treatment',
+            'Professional massage',
+            'Teeth brushing',
+            'Blueberry facial'
+          ],
+          recommended: true
+        }
+      ];
+  
+  // 获取服务时长（优先使用后端数据）
+  const getServiceDuration = (serviceType: string): number => {
+    if (backendServices.length > 0) {
+      const service = backendServices.find(s => s.id === serviceType);
+      if (service) return service.duration;
+    }
+    
+    // 后备方案
+    switch (serviceType) {
+      case 'basic': return 1;
+      case 'full': return 3;
+      case 'spa': return 4;
+      default: return 1;
+    }
+  };
+  
+  // 计算基本价格（优先使用后端数据）
+  const calculateBasePrice = (serviceType: string): number => {
+    if (backendServices.length > 0) {
+      const service = backendServices.find(s => s.id === serviceType);
+      if (service) return service.price;
+    }
+    
+    // 后备方案
+    switch (serviceType) {
+      case 'basic': return 60;
+      case 'full': return 120;
+      case 'spa': return 220;
+      default: return 0;
+    }
+  };
+  
+  // 计算日托价格（优先使用后端数据）
+  const calculateDayCarePrice = (dayCare: { enabled: boolean; type: string; days: number | string; morning?: boolean; afternoon?: boolean; evening?: boolean }): number => {
+    if (!dayCare.enabled) return 0;
+    
+    if (backendDayCareOptions.length > 0) {
+      const option = backendDayCareOptions.find(o => o.type === dayCare.type);
+      if (option) {
+        if (dayCare.type === 'daily') {
+          return option.price;
+        } else {
+          const days = typeof dayCare.days === 'number' ? dayCare.days : parseInt(String(dayCare.days)) || 0;
+          return days > 1 ? days * option.price : 0;
+        }
+      }
+    }
+    
+    // 后备方案
+    if (dayCare.type === 'daily') return 50;
+    
+    const days = typeof dayCare.days === 'number' ? dayCare.days : parseInt(String(dayCare.days)) || 0;
+    return days > 1 ? days * 80 : 0;
+  };
+  
+  // 计算总价格（会考虑折扣）
+  const calculateTotalPrice = (serviceType: string, dayCare: { enabled: boolean; type: string; days: number | string; morning?: boolean; afternoon?: boolean; evening?: boolean }, shouldApplyDiscount: boolean): number => {
+    let total = calculateBasePrice(serviceType);
+    
+    // 添加日托价格
+    total += calculateDayCarePrice(dayCare);
+    
+    // 应用会员折扣
+    if (shouldApplyDiscount && user) {
+      if (backendServices.length > 0) {
+        const service = backendServices.find(s => s.id === serviceType);
+        if (service && service.discount > 0) {
+          const discountMultiplier = (100 - service.discount) / 100;
+          total = total * discountMultiplier;
+        }
+      } else {
+        // 后备方案
+        if (serviceType === 'spa') {
+          total = total * 0.9; // 10% discount for spa
+        } else if (serviceType === 'basic' || serviceType === 'full') {
+          total = total * 0.92; // 8% discount for basic and full grooming
+        }
+      }
+    }
+    
+    return Math.round(total * 100) / 100; // 四舍五入到两位小数
+  };
+
+  const availableTimes = [
+    '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'
+  ];
+
+  // Get current date in YYYY-MM-DD format
+  const getCurrentDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Generate time options with service duration consideration
+  const generateTimeOptions = () => {
+    const times = [];
+    const startHour = 10; // Opening time: 10 AM
+    const endHour = 22; // Closing time: 10 PM
+    
+    for (let hour = startHour; hour <= endHour - 1; hour++) {
+      const time = `${hour.toString().padStart(2, '0')}:00`;
+      times.push(time);
+    }
+    return times;
+  };
+
+  // 根据服务时长筛选有效的时间选项
+  const getValidTimeOptions = () => {
+    // 如果没有选择服务类型，返回所有时间选项
+    if (!formData.serviceType) {
+      return generateTimeOptions();
+    }
+    
+    const duration = getServiceDuration(formData.serviceType);
+    const closingHour = 22; // 营业结束时间 10 PM
+    const startHour = 10; // 营业开始时间 10 AM
+    
+    const validTimes = [];
+    
+    // 只返回不会超过营业时间的时间槽
+    for (let hour = startHour; hour <= closingHour - duration; hour++) {
+      const time = `${hour.toString().padStart(2, '0')}:00`;
+      validTimes.push(time);
+    }
+    
+    return validTimes;
+  };
+
+  // 当服务类型改变时，确保当前选择的时间仍然有效
+  useEffect(() => {
+    if (formData.serviceType && formData.time) {
+      const validTimes = getValidTimeOptions();
+      
+      // 如果当前选择的时间不在有效时间内，清除时间选择
+      if (!validTimes.includes(formData.time)) {
+        setFormData(prev => ({
+          ...prev,
+          time: ''
+        }));
+      }
+    }
+  }, [formData.serviceType]);
+
+  // Check if a time slot is available for the selected service
+  const isTimeAvailable = (time: string) => {
+    // If no date or service type is selected, consider the slot available
+    if (!formData.date || !formData.serviceType) return true;
+    
+    const duration = getServiceDuration(formData.serviceType);
+    const startHour = parseInt(time.split(':')[0]);
+    
+    // Check if service would extend beyond closing time (22:00)
+    if (wouldExtendBeyondClosing(startHour, duration)) return false;
+    
+    // 检查所有受影响的时间段
+    for (let hour = startHour; hour < startHour + duration; hour++) {
+      const currentTime = `${hour.toString().padStart(2, '0')}:00`;
+      
+      // 直接从timeSlots数组中检查当前小时的预约状态
+      const timeSlot = timeSlots.find(slot => slot.time === currentTime);
+      
+      // 如果满足以下任一条件，整个服务时间段就不可用:
+      // 1. 时间槽不存在
+      // 2. 时间槽的isAvailable属性为false
+      // 3. 时间槽的当前预约数量已达到5个
+      if (!timeSlot || !timeSlot.isAvailable || timeSlot.currentBookings >= 5) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  // Handle service type change
+  const handleServiceTypeChange = (serviceId: string) => {
+    // 保存当前的用户联系信息 (如果是非登录用户)
+    if (!user) {
+      sessionStorage.setItem('guestContactInfo', JSON.stringify({
+        ownerName: formData.ownerName,
+        ownerPhone: formData.ownerPhone,
+        ownerEmail: formData.ownerEmail
+      }));
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      serviceType: prev.serviceType === serviceId ? '' : serviceId, // 如果点击的是当前选中的服务，则取消选择
+      dayCare: {
+        enabled: false,
+        type: 'daily',
+        days: 1
+      }
+    }));
+  };
+
+  // 检查时间段是否已被预约
+  const isTimeSlotBooked = (date: string, time: string) => {
+    // 计算同一时间段已预约的数量
+    const bookedCount = bookedAppointments.filter(appointment => {
+      // 检查是否是同一天
+      if (appointment.date !== date) return false;
+      
+      // 获取预约的开始时间和结束时间
+      const appointmentStartHour = parseInt(appointment.time.split(':')[0]);
+      const appointmentEndHour = appointmentStartHour + appointment.duration;
+      
+      // 获取要检查的时间
+      const checkHour = parseInt(time.split(':')[0]);
+      
+      // 检查是否有时间段重叠
+      return (checkHour >= appointmentStartHour && checkHour < appointmentEndHour);
+    }).length;
+
+    // 如果同一时间段已有2个预约，则返回true（表示不能再预约）
+    return bookedCount >= 2;
+  };
+
+  // 检查是否有足够的连续时间段
+  const hasEnoughConsecutiveSlots = (date: string, startTime: string, duration: number) => {
+    const startHour = parseInt(startTime.split(':')[0]);
+    
+    // 检查每个小时是否可用
+    for (let hour = 0; hour < duration; hour++) {
+      const currentHour = startHour + hour;
+      const currentTime = `${currentHour.toString().padStart(2, '0')}:00`;
+      
+      // 检查是否超出营业时间
+      if (currentHour >= 22) {
+        return false;
+      }
+      
+      // 检查当前小时是否已被预约
+      if (isTimeSlotBooked(date, currentTime)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // 获取可用时间段
+  const getAvailableTimeSlots = () => {
+    if (!formData.date) return [];
+    
+    const duration = getServiceDuration(formData.serviceType);
+    return availableTimes.filter((time, index) => {
+      // 检查是否有足够的连续时间段
+      if (index + duration > availableTimes.length) return false;
+      
+      // 检查所有需要的时间段是否可用
+      return hasEnoughConsecutiveSlots(formData.date, time, duration);
+    });
+  };
+
+  // Handle time selection with toggle functionality
+  const handleTimeSelect = (time: string) => {
+      setFormData(prev => ({
+        ...prev,
+      time: prev.time === time ? '' : time // Toggle selection
+    }));
+  };
+
+  // Handle background click to deselect time
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    // Only deselect if clicking the background container, not the buttons
+    if ((e.target as HTMLElement).classList.contains('time-slots-container')) {
+      setFormData(prev => ({
+        ...prev,
+        time: ''
+      }));
+    }
+  };
+
+  // 当用户登录状态改变时，更新表单中的用户信息
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        ownerName: user.name || prev.ownerName,
+        ownerPhone: user.phone || prev.ownerPhone,
+        ownerEmail: user.email // 始终使用会员邮箱
+      }));
+      setIsMember(true);
+    } else {
+      setIsMember(false);
+    }
+  }, [user]);
+
+  // 从sessionStorage恢复用户联系信息
+  useEffect(() => {
+    if (!user) {
+      const savedContactInfo = sessionStorage.getItem('guestContactInfo');
+      if (savedContactInfo) {
+        const contactInfo = JSON.parse(savedContactInfo);
+        setFormData(prev => ({
+          ...prev,
+          ownerName: contactInfo.ownerName || prev.ownerName,
+          ownerPhone: contactInfo.ownerPhone || prev.ownerPhone,
+          ownerEmail: contactInfo.ownerEmail || prev.ownerEmail
+        }));
+      }
+    }
+  }, [formData.serviceType, user]);
+
+  // 页面卸载时清除sessionStorage
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // 只有真正离开页面时才清除
+      if (!user) {
+        sessionStorage.removeItem('guestContactInfo');
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user]);
+
+  // 在组件卸载时清除sessionStorage（导航到其他页面时）
+  useEffect(() => {
+    return () => {
+      // 组件卸载时清除sessionStorage
+      if (!user) {
+        console.log('清除sessionStorage中的联系信息（组件卸载）');
+        sessionStorage.removeItem('guestContactInfo');
+      }
+    };
+  }, [user]);
+  
+  // 页面关闭/刷新时清除sessionStorage
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // 只有真正离开页面时才清除
+      if (!user) {
+        console.log('清除sessionStorage中的联系信息（页面关闭/刷新）');
+        sessionStorage.removeItem('guestContactInfo');
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user]);
+
+  // 获取时间段可用性
+  const fetchTimeSlots = async () => {
+    if (!formData.date) return;
+
+    try {
+      // 获取所有时间段的可用性信息
+      const timeOptions = generateTimeOptions();
+      console.log(`Fetching availability for date: ${formData.date}, time options:`, timeOptions);
+      
+      const slots = await Promise.all(
+        timeOptions.map(async (time) => {
+          try {
+            const apiUrl = `http://localhost:4003/api/appointments/availability/${formData.date}/${time}`;
+            console.log(`Checking availability: ${apiUrl}`);
+            
+            const response = await fetch(apiUrl);
+      if (response.ok) {
+        const data = await response.json();
+              console.log(`Time ${time}: available=${data.isAvailable}, bookings=${data.currentBookings}/5`);
+              return {
+                time,
+                isAvailable: data.isAvailable,
+                currentBookings: data.currentBookings
+              };
+            } else {
+              console.error(`Failed to fetch for ${time}:`, response.statusText);
+              return {
+                time,
+                isAvailable: true,
+                currentBookings: 0
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching availability for ${time}:`, error);
+            return {
+              time,
+              isAvailable: true,
+              currentBookings: 0
+            };
+          }
+        })
+      );
+      
+      console.log('All time slots data:', slots);
+      setTimeSlots(slots);
+      
+      // 在更新时间槽后检查当前选择的时间是否仍然可用
+      if (formData.time) {
+        const selectedSlot = slots.find(slot => slot.time === formData.time);
+        if (selectedSlot && !selectedSlot.isAvailable) {
+          console.log(`Selected time ${formData.time} is no longer available, clearing selection`);
+          setFormData(prev => ({...prev, time: ''}));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching time slots:', error);
+      // If API fails, use default time slots where all are available
+      const defaultSlots = generateTimeOptions().map(time => ({
+        time,
+        isAvailable: true,
+        currentBookings: 0
+      }));
+      setTimeSlots(defaultSlots);
+    }
+  };
+
+  // 当日期改变时获取时间段
+  useEffect(() => {
+    if (formData.date) {
+      fetchTimeSlots();
+      
+      // 创建一个轮询，每30秒更新一次时间槽状态
+      const timeSlotsInterval = setInterval(() => {
+    if (formData.date) {
+      fetchTimeSlots();
+        }
+      }, 30000); // 30秒刷新一次
+      
+      return () => {
+        clearInterval(timeSlotsInterval);
+      };
+    }
+  }, [formData.date]);
+  
+  // 在每次时间槽更新后，检查当前选择的时间是否仍然可用
+  useEffect(() => {
+    if (formData.time && formData.date && formData.serviceType) {
+      if (!isTimeAvailable(formData.time)) {
+        // 如果当前选择的时间不再可用，清除选择
+        setFormData(prev => ({...prev, time: ''}));
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeSlots]);
+
+  // 检查特定时间段是否可用
+  const isTimeSlotAvailable = (time: string) => {
+    if (!formData.date || !time) return false;
+    
+    const duration = getServiceDuration(formData.serviceType);
+    const startHour = parseInt(time.split(':')[0]);
+    
+    // Check all required time slots based on service duration
+    for (let i = 0; i < duration; i++) {
+      const currentHour = startHour + i;
+      const currentTime = `${currentHour.toString().padStart(2, '0')}:00`;
+      
+      // Find the time slot
+      const slot = timeSlots.find(slot => slot.time === currentTime);
+      if (!slot) return false; // If we can't find the slot, assume it's not available
+      
+      // Check if this slot is already at capacity
+      if (slot.currentBookings >= 5) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // 获取当前预约数量 - 考虑服务持续时间和重叠
+  const getCurrentBookings = (time: string) => {
+    if (!formData.date || !time) return 0;
+    
+    const checkHour = parseInt(time.split(':')[0]);
+    let bookingCount = 0;
+    
+    // 检查这个时间段的所有预约
+    bookedAppointments.forEach(appointment => {
+      // 只检查同一天的预约
+      if (appointment.date !== formData.date) return;
+      
+      // 获取预约的开始时间和结束时间
+      const appointmentStart = parseInt(appointment.time.split(':')[0]);
+      const appointmentEnd = appointmentStart + appointment.duration;
+      
+      // 检查是否有时间重叠
+      if (checkHour >= appointmentStart && checkHour < appointmentEnd) {
+        bookingCount++;
+      }
+    });
+
+    return bookingCount;
+  };
+
+  // Update useEffect for membership status to handle logout
+  useEffect(() => {
+    // Reset membership status and form data when component mounts or user changes
+    if (!user) {
+      setIsMember(false);
+      setFormData(prev => ({
+        ...prev,
+        ownerName: '',
+        ownerPhone: '',
+        ownerEmail: '',
+      }));
+      
+      // 重新计算价格，确保不应用会员折扣
+      if (formData.serviceType) {
+        const regularPrice = calculateTotalPrice(formData.serviceType, formData.dayCare, false);
+        setTotalPrice(regularPrice);
+        setDiscount(0);
+      }
+    } else {
+      // Only set member status and user data if user is logged in
+      setIsMember(true);
+      setFormData(prev => ({
+        ...prev,
+        ownerName: user.name || '',
+        ownerPhone: user.phone || '',
+        ownerEmail: user.email || '',
+      }));
+      
+      // 重新计算价格，应用会员折扣
+      if (formData.serviceType) {
+        const memberPrice = calculateTotalPrice(formData.serviceType, formData.dayCare, true);
+        const regularPrice = calculateTotalPrice(formData.serviceType, formData.dayCare, false);
+        setTotalPrice(memberPrice);
+        setDiscount(regularPrice - memberPrice);
+      }
+    }
+  }, [user, formData.serviceType, formData.dayCare]);
+
+  // 强制同步 UI 状态和登录状态
+  useEffect(() => {
+    // 确保 member price 和登录状态一致
+    if (user && discount === 0 && formData.serviceType) {
+      // 用户已登录但没有折扣，重新计算价格
+      const memberPrice = calculateTotalPrice(formData.serviceType, formData.dayCare, true);
+      const regularPrice = calculateTotalPrice(formData.serviceType, formData.dayCare, false);
+      setTotalPrice(memberPrice);
+      setDiscount(regularPrice - memberPrice);
+    } else if (!user && discount > 0) {
+      // 用户未登录但有折扣，去除折扣
+      const regularPrice = calculateTotalPrice(formData.serviceType, formData.dayCare, false);
+      setTotalPrice(regularPrice);
+      setDiscount(0);
+    }
+  }, [user, discount, formData.serviceType, formData.dayCare]);
+
+  // 处理表单提交
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitError('');
+    setSubmitSuccess(false);
+
+    try {
+      // Basic validation
+      if (!formData.petName || !formData.date || !formData.time || !formData.serviceType || 
+          !formData.ownerName || !formData.ownerPhone || !formData.ownerEmail) {
+        setSubmitError('Please fill all required fields');
+        setIsSubmitting(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // 验证长期日托天数
+      if (formData.dayCare.enabled && formData.dayCare.type === 'longTerm') {
+        // 检查是否为有效数字且大于等于2
+        if (typeof formData.dayCare.days !== 'number' || formData.dayCare.days < 2) {
+          setSubmitError('Long term day care requires a valid number of days (minimum 2 days). Please adjust the number of days.');
+        setIsSubmitting(false);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+        }
+      }
+
+      // 再次检查时间槽是否可用，如果不可用则更新UI并静默返回，不显示错误
+      if (!isTimeAvailable(formData.time)) {
+        await fetchTimeSlots();
+        setFormData(prev => ({...prev, time: ''})); // 清空选择的时间
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Get authentication token (if available)
+      const cookie = document.cookie.split('; ').find(row => row.startsWith('token='));
+      let token = cookie ? cookie.split('=')[1] : '';
+      if (!token) {
+        const localToken = localStorage.getItem('token');
+        token = localToken || '';
+      }
+      
+      // 将本地时间转换为UTC ISO格式（以便在MongoDB中正确存储）
+      const utcDateTime = convertToUTC(formData.date, formData.time);
+      console.log('Converting to UTC:', formData.date, formData.time, '→', utcDateTime);
+      
+      // Create a complete payload with all possible fields
+      const completePayload = {
+        petName: formData.petName,
+        petType: formData.petType,
+        date: formData.date, // 保持日期格式不变
+        time: formData.time, // 保持时间格式不变
+        utcDateTime: utcDateTime, // 添加UTC日期时间用于后端处理
+        serviceType: formData.serviceType === 'basic' ? 'Basic Grooming' :
+                    formData.serviceType === 'full' ? 'Full Grooming' : 
+                    'Spa Treatment',
+        ownerName: formData.ownerName,
+        ownerPhone: formData.ownerPhone,
+        ownerEmail: formData.ownerEmail,
+        notes: formData.notes || '',
+        totalPrice: calculateTotalPrice(formData.serviceType, formData.dayCare, isMember),
+        status: 'Booked',
+        userId: user?._id || null,
+        duration: getServiceDuration(formData.serviceType),
+        dayCareOptions: formData.dayCare.enabled ? {
+          type: formData.dayCare.type,
+          days: Number(formData.dayCare.days),
+          morning: true,
+          afternoon: true,
+          evening: true
+        } : null
+      };
+
+      console.log('Sending appointment data:', completePayload);
+      
+      // 创建headers对象，只有在有token时才添加Authorization
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      // Create appointment with complete payload
+      console.log('Sending appointment data details:', JSON.stringify(completePayload, null, 2));
+      console.log('Headers:', headers);
+      
+      // 根据用户是否登录选择不同的API端点
+      const endpointUrl = token && user ? 'http://localhost:4003/api/appointments' : 'http://localhost:4003/api/appointments/guest';
+      console.log('API URL:', endpointUrl);
+      
+      const response = await fetch(endpointUrl, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(completePayload)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Appointment creation failed status:', response.status);
+        console.error('Appointment creation failed status text:', response.statusText);
+        console.error('Appointment creation full response:', response);
+        console.error('Appointment creation response error data:', errorData);
+        
+        // 不论什么错误，如果包含"time slot"或"Time slot"字样，都静默处理
+        if (errorData.message && (
+            errorData.message.toLowerCase().includes('time slot') || 
+            errorData.message.toLowerCase().includes('fully booked') || 
+            errorData.message.toLowerCase().includes('already booked')
+        )) {
+          console.log('Time slot related error detected, refreshing time slots...');
+          await fetchTimeSlots();
+          setFormData(prev => ({...prev, time: ''})); // 清空选择的时间
+          
+          // 不显示错误信息
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // 其他类型的错误才显示给用户
+        throw new Error(errorData.message || 'Failed to create appointment. Please try again later.');
+      }
+      
+      // Success handling
+      setSubmitSuccess(true);
+      
+      // 成功提交后清除sessionStorage中的联系信息
+      if (!user) {
+        sessionStorage.removeItem('guestContactInfo');
+      }
+      
+      // Send confirmation emails using EmailJS
+      try {
+        // Format date and time for email
+        const appointmentDate = new Date(`${formData.date}T${formData.time}`);
+        const formattedDate = appointmentDate.toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        const formattedTime = appointmentDate.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        });
+        
+        // Get service name from service type
+        const serviceName = formData.serviceType === 'basic' ? 'Basic Grooming' :
+                           formData.serviceType === 'full' ? 'Full Grooming' : 
+                           'Spa Treatment';
+        
+        // Calculate price information
+        const priceInfo = calculateTotalPrice(formData.serviceType, formData.dayCare, isMember);
+        const formattedPrice = `RM ${priceInfo}`;
+        
+        // 创建用于显示的daycare信息
+        let dayCareInfoDisplay = 'No';
+        if (formData.dayCare.enabled) {
+          const dayCareDays = Number(formData.dayCare.days);
+          dayCareInfoDisplay = `Yes (${formData.dayCare.type === 'daily' ? 'Daily' : 'Long Term'}, ${dayCareDays} day${dayCareDays > 1 ? 's' : ''})`;
+        }
+
+        // Calculate detailed price breakdown for emails
+        const baseServicePrice = calculateBasePrice(formData.serviceType);
+        const dayCarePrice = calculateDayCarePrice(formData.dayCare);
+        
+        // Calculate member discount (only applied to grooming service)
+        let memberDiscount = 0;
+        if (isMember) {
+          if (formData.serviceType === 'spa') {
+            memberDiscount = baseServicePrice * 0.1; // 10% discount for spa
+          } else {
+            memberDiscount = baseServicePrice * 0.08; // 8% discount for basic and full grooming
+          }
+        }
+        
+        // Format all price values
+        const formattedBasePrice = `RM ${baseServicePrice.toFixed(2)}`;
+        const formattedDayCarePrice = formData.dayCare.enabled ? `RM ${dayCarePrice.toFixed(2)}` : 'N/A';
+        const formattedMemberDiscount = isMember ? `RM ${memberDiscount.toFixed(2)}` : 'N/A';
+        
+        // Create HTML price table for email
+        const priceDetailHtml = `
+<table style="width:100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 10px;">
+  <tr style="background-color: #f8f9fa;">
+    <th style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Service</th>
+    <th style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">Price</th>
+  </tr>
+  <tr>
+    <td style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">${serviceName}</td>
+    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">${formattedBasePrice}</td>
+  </tr>
+  ${formData.dayCare.enabled ? `
+  <tr>
+    <td style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Day Care (${formData.dayCare.type === 'daily' ? 'Daily' : 'Long Term'}, ${Number(formData.dayCare.days)} day${Number(formData.dayCare.days) > 1 ? 's' : ''})</td>
+    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd;">${formattedDayCarePrice}</td>
+  </tr>` : ''}
+  ${isMember ? `
+  <tr>
+    <td style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Member Discount (${formData.serviceType === 'spa' ? '10%' : '8%'})</td>
+    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd; color: #e53e3e;">-${formattedMemberDiscount}</td>
+  </tr>` : ''}
+  <tr style="font-weight: bold;">
+    <td style="padding: 8px; text-align: left; border-bottom: 1px solid #ddd;">Total</td>
+    <td style="padding: 8px; text-align: right; border-bottom: 1px solid #ddd; color: #e53e3e;">RM ${priceInfo.toFixed(2)}</td>
+  </tr>
+</table>`;
+
+        // Create admin email template parameters - 简化参数, 避免条件结构
+        const adminTemplateParams = {
+          pet_name: formData.petName,
+          pet_type: formData.petType === 'dog' ? 'Dog' : 'Cat', // 确保宠物类型正确显示
+          service_type: serviceName,
+          appointment_date: formattedDate,
+          appointment_time: formattedTime,
+          day_care: formData.dayCare.enabled ? 'Yes' : 'No',
+          day_care_info: dayCareInfoDisplay, // 使用预处理好的日托信息
+          total_price: priceInfo.toString(), // 确保是字符串
+          customer_name: formData.ownerName,
+          customer_email: formData.ownerEmail,
+          customer_phone: formData.ownerPhone,
+          notes: formData.notes || 'None',
+          member_status: isMember ? 'Member' : 'Non-Member',
+          // 价格明细
+          base_service_price: formattedBasePrice,
+          day_care_price: formattedDayCarePrice,
+          member_discount: formattedMemberDiscount,
+          price_detail_html: priceDetailHtml, // HTML格式的价格明细表格
+          // 管理员邮件参数
+          from_name: 'AH HAO Booking System',
+          to_name: 'AH HAO Admin',
+          reply_to: formData.ownerEmail, // 回复地址设为客户邮箱
+          to_email: 'ahhaopetshop@gmail.com' // 明确指定发给管理员邮箱
+        };
+        
+        console.log('Sending admin email with params:', JSON.stringify(adminTemplateParams, null, 2));
+        
+        // Send email to admin
+        const adminEmailResponse = await emailjs.send(
+          'service_krtn3d1',
+          'template_xq8hg1p',
+          adminTemplateParams,
+          '5hA17zkuJrKTq5kny'
+        );
+        
+        console.log('EmailJS admin response:', adminEmailResponse);
+        
+        // Create user email template parameters - 简化参数, 避免条件结构
+        const userTemplateParams = {
+          to_name: formData.ownerName,
+          pet_name: formData.petName,
+          pet_type: formData.petType === 'dog' ? 'Dog' : 'Cat', // 确保宠物类型正确显示
+          service_type: serviceName,
+          appointment_date: formattedDate,
+          appointment_time: formattedTime,
+          total_price: priceInfo.toString(), // 确保是字符串
+          day_care: formData.dayCare.enabled ? 'Yes' : 'No',
+          day_care_info: dayCareInfoDisplay, // 使用预处理好的日托信息
+          shop_address: 'No.2, Jalan Persiaran Seksyen 1/3, Bandar Teknologi Kajang, 43500 Semenyih, Selangor',
+          contact_email: 'ahhaopetshop@gmail.com',
+          contact_phone: whatsappNumber,
+          // 添加客户信息
+          customer_name: formData.ownerName,
+          customer_email: formData.ownerEmail,
+          customer_phone: formData.ownerPhone,
+          member_status: isMember ? 'Member' : 'Non-Member',
+          // 价格明细
+          base_service_price: formattedBasePrice,
+          day_care_price: formattedDayCarePrice,
+          member_discount: formattedMemberDiscount,
+          price_detail_html: priceDetailHtml, // HTML格式的价格明细表格
+          // 客户邮件参数
+          from_name: 'AH HAO PET SHOP',
+          reply_to: 'ahhaopetshop@gmail.com',
+          to_email: formData.ownerEmail // 明确指定只发给客户邮箱
+        };
+        
+        console.log('Sending user confirmation email with params:', JSON.stringify(userTemplateParams, null, 2));
+        
+        // Send confirmation email to user
+        const userEmailResponse = await emailjs.send(
+          'service_krtn3d1',
+          'template_bfqf4z1',
+          userTemplateParams,
+          '5hA17zkuJrKTq5kny'
+        );
+        
+        console.log('EmailJS user response:', userEmailResponse);
+        
+        console.log('Both confirmation emails sent successfully');
+      } catch (emailError) {
+        console.error('Error sending confirmation emails:', emailError);
+        // Note: We don't set an error state here because the appointment was successful
+        // Even if email sending fails, we want to show the success message
+      }
+      
+      // Create notification for member dashboard - only if user is logged in
+      try {
+        if (user && isIntentionalLogin && token) {
+          await createNotificationForAppointment(token, formData, formData.date, formData.time);
+          
+          // Dispatch a custom event to notify MemberDashboard to refresh appointments
+          window.dispatchEvent(new CustomEvent('appointmentCreated'));
+        }
+      } catch (notificationError) {
+        console.error('Failed to create notification:', notificationError);
+      }
+      
+      // Reset form
+      setFormData({
+        petName: '',
+          petType: 'dog',
+        date: '',
+        time: '',
+        serviceType: '',
+          notes: '',
+          ownerName: '',
+          ownerPhone: '',
+          ownerEmail: '',
+          dayCare: {
+            enabled: false,
+            type: 'daily',
+            days: 1
+          }
+        });
+        setTotalPrice(0);
+        setDiscount(0);
+      
+      // Scroll to top to show success message
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error: any) {
+      console.error('Error creating appointment:', error);
+      setSubmitError(error.message || 'An error occurred while processing your appointment');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  // Helper function to create notification
+  const createNotificationForAppointment = async (token: string, formData: FormData, dateFormatted: string, timeFormatted: string) => {
+    // Only create notifications for logged-in users
+    if (!user || !user._id || !isIntentionalLogin) {
+      console.log('Skipping notification creation for non-logged-in user');
+      return;
+    }
+    
+    const notificationData = {
+      title: '🐾 New Grooming Appointment',
+      message: `Your appointment for ${formData.petName} on ${new Date(`${dateFormatted}T${timeFormatted}`).toLocaleDateString()} at ${new Date(`${dateFormatted}T${timeFormatted}`).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} has been confirmed.`,
+      type: 'appointment',
+      read: false,
+      user: user._id // Add user ID explicitly
+    };
+    
+    try {
+      // Try the /create endpoint first
+      const response = await fetch('http://localhost:4003/api/notifications/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(notificationData)
+      });
+      
+      if (!response.ok) {
+        // If /create endpoint fails, try the regular notifications endpoint
+        console.warn('Failed to create notification using /create endpoint, trying alternative endpoint');
+        
+        const fallbackResponse = await fetch('http://localhost:4003/api/notifications', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(notificationData)
+        });
+        
+        if (fallbackResponse.ok) {
+          console.log('Appointment notification created using fallback endpoint');
+        } else {
+          console.error('Failed to create notification using fallback endpoint');
+        }
+      } else {
+        console.log('Appointment notification created successfully');
+      }
+    } catch (error) {
+      console.error('Error creating notification:', error);
+    }
+  };
+
+  // Add new function for register navigation
+  const handleRegister = () => {
+    // 保存当前信息到sessionStorage，以便登录/注册后能回来
+    sessionStorage.setItem('returnToBooking', 'true');
+    
+    // 但要确保清除任何保存的联系信息，因为我们希望用户登录/注册后使用其账户信息
+    sessionStorage.removeItem('guestContactInfo');
+    
+    navigate('/register');
+  };
+
+  // Handle sign in navigation
+  const handleSignIn = () => {
+    // 保存当前信息到sessionStorage，以便登录/注册后能回来
+    sessionStorage.setItem('returnToBooking', 'true');
+    
+    // 但要确保清除任何保存的联系信息，因为我们希望用户登录/注册后使用其账户信息
+    sessionStorage.removeItem('guestContactInfo');
+    
+    navigate('/login');
+  };
+
+  // 返回首页，根据来源返回不同位置
+  const handleBackToHome = () => {
+    // 清除sessionStorage中的联系信息
+    if (!user) {
+      sessionStorage.removeItem('guestContactInfo');
+    }
+    
+    // 检查是否是从Premium Grooming部分导航而来
+    // location.state中可能有两种标记方式：from: 'premium-grooming' 或 fromPremiumGrooming: true
+    const fromPremiumGrooming = 
+      (location.state && location.state.from === 'premium-grooming') || 
+      (location.state && location.state.fromPremiumGrooming === true);
+    
+    console.log('Navigation source check:', {
+      locationState: location.state,
+      fromPremiumGrooming
+    });
+    
+    if (fromPremiumGrooming) {
+      // 导航到首页，并传递状态以滚动到Premium Grooming部分
+      console.log('Navigating back to Premium Grooming section');
+      navigate('/', { 
+        state: { scrollToPremiumGrooming: true },
+        replace: true 
+      });
+    } else {
+      // 为其他情况返回首页顶部
+      console.log('Navigating back to homepage top');
+      // 先禁用平滑滚动，确保立即滚动
+      document.documentElement.style.scrollBehavior = 'auto';
+      document.body.style.scrollBehavior = 'auto';
+      
+      // 执行滚动
+      window.scrollTo({
+        top: 0,
+        behavior: 'instant'
+      });
+      
+      // 导航到首页，使用replace以替换而非添加历史记录
+      navigate('/', { replace: true });
+      
+      // 在导航完成后的下一个事件循环中再次确保滚动到顶部
+      setTimeout(() => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'instant'
+        });
+        
+        // 导航完成后恢复平滑滚动
+        setTimeout(() => {
+          document.documentElement.style.scrollBehavior = '';
+          document.body.style.scrollBehavior = '';
+        }, 100);
+      }, 0);
+    }
+  };
+
+  // Handle back to dashboard navigation
+  const handleBackToDashboard = () => {
+    // 清除sessionStorage中的联系信息 
+    if (!user) {
+      sessionStorage.removeItem('guestContactInfo');
+    }
+    
+    // 保存当前URL，这样从控制面板页面点击返回时可以回到预约页面
+    sessionStorage.setItem('returnToBooking', 'true');
+    
+    navigate('/member-dashboard');
+  };
+
+  // Add useEffect for document click handler
+  useEffect(() => {
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Check if the click is on form elements that should not trigger deselection
+      const isFormElement = target.closest('input, select, textarea, button, label, .time-button, [role="button"]');
+      const isFormContainer = target.closest('form');
+      
+      // Only deselect if clicking outside form elements and the form container
+      if (!isFormElement && !isFormContainer) {
+        setFormData(prev => ({
+          ...prev,
+          time: ''
+        }));
+      }
+    };
+
+    document.addEventListener('click', handleDocumentClick);
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, []);
+
+  // 使用useLayoutEffect确保在页面绘制前就滚动到顶部
+  useLayoutEffect(() => {
+    // 强制滚动到顶部
+    document.documentElement.style.scrollBehavior = 'auto';
+    document.body.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+    
+    // 尝试多次滚动，确保在所有DOM元素加载后也保持在顶部
+    const scrollIntervals: NodeJS.Timeout[] = [];
+    for (let i = 0; i < 5; i++) {
+      const interval = setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, i * 100); // 0ms, 100ms, 200ms, 300ms, 400ms
+      scrollIntervals.push(interval);
+    }
+    
+    // 恢复平滑滚动
+    const restoreTimer = setTimeout(() => {
+      document.documentElement.style.scrollBehavior = '';
+      document.body.style.scrollBehavior = '';
+    }, 500);
+    
+    return () => {
+      scrollIntervals.forEach(interval => clearTimeout(interval));
+      clearTimeout(restoreTimer);
+    };
+  }, []);
+
+  // Add new function to check if form is valid
+  const isFormValid = () => {
+    // Check all required fields
+    if (!formData.petName) return false;
+    if (!formData.petType) return false;
+    if (!formData.date) return false;
+    if (!formData.time) return false;
+    if (!formData.serviceType) return false;
+    if (!formData.ownerName) return false;
+    if (!formData.ownerPhone) return false;
+    if (!formData.ownerEmail) return false;
+
+    // Check if email is valid
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.ownerEmail)) return false;
+
+    // Check if phone is not empty
+    if (formData.ownerPhone.trim() === '') return false;
+
+    // Check if name is not empty
+    if (formData.ownerName.trim() === '') return false;
+
+    // Check if pet name is not empty
+    if (formData.petName.trim() === '') return false;
+
+    // If day care is enabled, check if days is valid for long term
+    if (formData.dayCare.enabled && formData.dayCare.type === 'longTerm') {
+      if (typeof formData.dayCare.days !== 'number' || formData.dayCare.days < 2) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // 从timeSlots数组中查找对应的时间槽，并考虑服务时长
+  const isTimeSlotAvailableForService = (time: string): boolean => {
+    if (!formData.date || !formData.serviceType) return true;
+    
+    const duration = getServiceDuration(formData.serviceType);
+    const startHour = parseInt(time.split(':')[0]);
+    
+    // 检查是否超出营业时间
+    if (wouldExtendBeyondClosing(startHour, duration)) return false;
+    
+    // 检查该服务所需的所有时间段
+    for (let hour = startHour; hour < startHour + duration; hour++) {
+      const currentTime = `${hour.toString().padStart(2, '0')}:00`;
+      
+      // 从timeSlots数组中查找当前时间段
+      const timeSlot = timeSlots.find(slot => slot.time === currentTime);
+      
+      // 如果满足以下任一条件，整个服务时间段就不可用:
+      // 1. 时间槽不存在
+      // 2. 时间槽的isAvailable属性为false
+      // 3. 时间槽的当前预约数量已达到5个
+      if (!timeSlot || !timeSlot.isAvailable || timeSlot.currentBookings >= 5) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  // 获取时间段的当前预约数量（取所需时间段中的最大值）
+  const getMaxBookingsForService = (time: string): number => {
+    if (!formData.date || !formData.serviceType) return 0;
+    
+    const duration = getServiceDuration(formData.serviceType);
+    const startHour = parseInt(time.split(':')[0]);
+    let maxBookings = 0;
+    
+    // 检查所有受影响的时间段
+    for (let hour = startHour; hour < startHour + duration; hour++) {
+      const currentTime = `${hour.toString().padStart(2, '0')}:00`;
+      const timeSlot = timeSlots.find(slot => slot.time === currentTime);
+      
+      // 如果找到了时间槽，取最大的预约数量
+      if (timeSlot) {
+        maxBookings = Math.max(maxBookings, timeSlot.currentBookings);
+      }
+    }
+    
+    return maxBookings;
+  };
+
+  // 当用户登录状态改变时，更新表单中的用户信息
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        ownerName: user.name || prev.ownerName,
+        ownerPhone: user.phone || prev.ownerPhone,
+        ownerEmail: user.email // 始终使用会员邮箱
+      }));
+      setIsMember(true);
+    } else {
+      setIsMember(false);
+    }
+  }, [user]);
+
+  // 从sessionStorage恢复用户联系信息
+  useEffect(() => {
+    if (!user) {
+      const savedContactInfo = sessionStorage.getItem('guestContactInfo');
+      if (savedContactInfo) {
+        const contactInfo = JSON.parse(savedContactInfo);
+        setFormData(prev => ({
+          ...prev,
+          ownerName: contactInfo.ownerName || prev.ownerName,
+          ownerPhone: contactInfo.ownerPhone || prev.ownerPhone,
+          ownerEmail: contactInfo.ownerEmail || prev.ownerEmail
+        }));
+      }
+    }
+  }, [formData.serviceType, user]);
+
+  // 页面卸载时清除sessionStorage
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // 只有真正离开页面时才清除
+      if (!user) {
+        sessionStorage.removeItem('guestContactInfo');
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user]);
+
+  // 在组件卸载时清除sessionStorage（导航到其他页面时）
+  useEffect(() => {
+    return () => {
+      // 组件卸载时清除sessionStorage
+      if (!user) {
+        console.log('清除sessionStorage中的联系信息（组件卸载）');
+        sessionStorage.removeItem('guestContactInfo');
+      }
+    };
+  }, [user]);
+  
+  // 页面关闭/刷新时清除sessionStorage
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // 只有真正离开页面时才清除
+      if (!user) {
+        console.log('清除sessionStorage中的联系信息（页面关闭/刷新）');
+        sessionStorage.removeItem('guestContactInfo');
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [user]);
+
+  // Fetch services and day care options from backend
+  useEffect(() => {
+    const fetchServicesData = async () => {
+      setIsLoadingServices(true);
+      try {
+        const [servicesData, dayCareOptionsData] = await Promise.all([
+          apiService.services.getGroomingServices(),
+          apiService.services.getDayCareOptions()
+        ]);
+        setServices(servicesData);
+        setDayCareOptions(dayCareOptionsData);
+      } catch (error) {
+        console.error('Failed to fetch services data:', error);
+        setError('Failed to load services information. Please try again later.');
+      } finally {
+        setIsLoadingServices(false);
+      }
+    };
+
+    fetchServicesData();
+  }, []);
+
+  // Update price calculation on form data change
+  useEffect(() => {
+    if (formData.serviceType) {
+      const updateTotalPrice = async () => {
+        try {
+          const price = await calculateTotalPrice(
+            formData.serviceType,
+            formData.dayCare,
+            isMember
+          );
+          setTotalPrice(price);
+          
+          // Calculate discount if member
+          if (isMember) {
+            const nondiscountedPrice = await calculateTotalPrice(
+              formData.serviceType,
+              formData.dayCare,
+              false // Calculate without discount
+            );
+            const discountAmount = nondiscountedPrice - price;
+            setDiscount(discountAmount);
+          } else {
+            setDiscount(0);
+          }
+        } catch (error) {
+          console.error('Error calculating price:', error);
+        }
+      };
+      
+      updateTotalPrice();
+    } else {
+      setTotalPrice(0);
+      setDiscount(0);
+    }
+  }, [formData.serviceType, formData.dayCare, isMember, services, dayCareOptions]);
+
+  return (
+    <div className="bg-gray-50 min-h-screen">
+      {isLoadingServices ? (
+        <div className="min-h-screen flex justify-center items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-500"></div>
+        </div>
+      ) : (
+        <div className="bg-gray-50 min-h-screen">
+          {/* 顶部导航栏 */}
+          <div className="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
+            <div className="container mx-auto px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  {/* 左侧：返回按钮 */}
+                  <button
+                    onClick={handleBackToHome}
+                    className="flex items-center space-x-2 text-gray-800 hover:text-rose-600 transition-colors duration-300 group mr-8"
+                  >
+                    <ChevronLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform duration-300" />
+                    <span className="text-lg font-medium hidden sm:inline">Back</span>
+                    <span className="text-lg font-medium sm:hidden">Back</span>
+                  </button>
+                  
+                  {/* 品牌名称：增加与返回按钮的间距 */}
+                  <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-rose-600 to-pink-500 bg-clip-text text-transparent tracking-tight transform">
+                    AH HAO PET SHOP
+                  </h2>
+                </div>
+                
+                {/* 右侧：页面标题和登录按钮 */}
+                <div className="flex items-center">
+                  {/* 页面标题 */}
+                  <div className="flex items-center">
+                    {/* 登录按钮移到标题左侧 */}
+                    {user && isIntentionalLogin ? (
+                  <button
+                    onClick={handleBackToDashboard}
+                        className="p-2 mr-2 text-gray-800 hover:text-rose-600 transition-colors duration-300 rounded-full hover:bg-rose-50"
+                        title="Back to Dashboard"
+                  >
+                    <User className="w-6 h-6" />
+                  </button>
+                  ) : (
+                    <button
+                      onClick={handleSignIn}
+                        className="p-2 mr-2 text-gray-800 hover:text-rose-600 transition-colors duration-300 rounded-full hover:bg-rose-50"
+                        title="Sign In"
+                    >
+                      <User className="w-6 h-6" />
+                    </button>
+                  )}
+                    
+                    <h1 className="text-xl font-bold text-gray-800 hidden sm:block">
+                  Grooming Appointment
+                </h1>
+              </div>
+            </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main content with adjusted padding for header only */}
+          <div className="min-h-screen bg-gray-50 pt-16">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              <div className="max-w-4xl mx-auto">
+                <div className="text-center mb-8 sm:mb-12">
+                  <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">Grooming Appointment</h1>
+                  <p className="text-lg sm:text-xl text-gray-600">Book a grooming session for your pet</p>
+                </div>
+
+                {/* Business Hours - Simplified */}
+                <div className="flex items-center justify-between mb-6 px-1">
+                      <div className="flex items-center">
+                    <Clock className="w-5 h-5 text-rose-500 mr-2" />
+                    <h2 className="text-lg font-semibold text-black">Business Hours</h2>
+                  </div>
+                  <span className="text-sm text-black">Monday - Sunday: 10:00 AM - 10:00 PM</span>
+                </div>
+
+                {/* Member Discount Notice */}
+                {user && isIntentionalLogin ? (
+                  <div className="bg-green-50 rounded-lg shadow-md p-4 mb-6 border border-green-200">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                      </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-green-700">
+                          <span className="font-medium">Member benefit applied!</span> {formData.serviceType === 'spa' ? '10% discount' : formData.serviceType === 'basic' || formData.serviceType === 'full' ? '8% discount' : 'Discount'} will be applied at total price.
+                          </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                  <div className="bg-rose-50 rounded-lg shadow-md p-4 mb-6 border border-rose-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-rose-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-rose-700">
+                            <span className="font-medium">Join as a member and enjoy discount!</span> Up to 10% off on premium services.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleRegister}
+                        className="px-3 py-1 bg-rose-600 text-white text-xs font-medium rounded-md hover:bg-rose-700 transition-colors duration-300"
+                      >
+                        Sign In
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl p-4 sm:p-8">
+                  {submitSuccess ? (
+                    <div className="text-center py-8">
+                      <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-4">
+                        <svg className="h-14 w-14 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </div>
+                      <h3 className="text-2xl font-semibold text-gray-900 mb-2">Appointment Booked Successfully!</h3>
+                      <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                        We've sent a confirmation email to your inbox. Please check both your inbox and spam folder. If you have any questions, feel free to contact us.
+                      </p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+                    <a 
+                      href={`https://wa.me/${whatsappNumber}?text=Hi, I just booked a grooming appointment and have a question.`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 w-full sm:w-auto"
+                    >
+                      <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                        <path fillRule="evenodd" clipRule="evenodd" d="M20.4539 3.54556C18.2266 1.31751 15.2629 0.0941162 12.1284 0.0917053C5.65416 0.0917053 0.371431 5.37449 0.36821 11.8512C0.366945 13.9618 0.927415 16.0118 1.99307 17.8315L0.272461 24.0917L6.67329 22.4105C8.42255 23.3766 10.3955 23.8863 12.4057 23.8871H12.41C18.8829 23.8871 24.1676 18.603 24.1716 12.1251C24.1739 9.00305 22.9552 6.03791 20.4539 3.54556ZM12.1284 21.8774H12.1252C10.3408 21.8765 8.59366 21.3866 7.0652 20.4632L6.69903 20.2442L2.9823 21.2341L3.99074 17.6119L3.74836 17.2299C2.7275 15.6476 2.18291 13.7842 2.18418 11.852C2.18644 6.47824 6.75608 1.90851 12.1316 1.90851C14.7242 1.91012 17.1861 2.93209 19.0167 4.76434C20.8474 6.59659 21.8681 9.06032 21.8665 11.6539C21.864 17.0277 17.2941 21.8774 12.1284 21.8774ZM17.6094 14.3405C17.3178 14.1947 15.8523 13.4746 15.5843 13.3782C15.3165 13.2819 15.1222 13.2337 14.9278 13.5257C14.7335 13.8173 14.165 14.4892 13.9939 14.6835C13.8231 14.8777 13.6521 14.9018 13.3602 14.756C13.0686 14.6101 12.1239 14.3003 11.0125 13.307C10.1474 12.5357 9.56337 11.5832 9.39222 11.2912C9.22133 10.9994 9.37513 10.8418 9.52247 10.6957C9.65553 10.5646 9.81893 10.3521 9.96674 10.1811C10.1145 10.0101 10.1624 9.88958 10.2589 9.6952C10.3551 9.50081 10.3072 9.32986 10.2347 9.18407C10.1624 9.03827 9.57987 7.57221 9.33826 6.98852C9.10472 6.42105 8.86608 6.5002 8.68456 6.48769C8.51366 6.47618 8.31953 6.47418 8.1251 6.47418C7.93093 6.47418 7.61483 6.54656 7.34687 6.83851C7.07917 7.13046 6.30602 7.85061 6.30602 9.31667C6.30602 10.7827 7.36935 12.2007 7.51716 12.3951C7.66498 12.5895 9.55853 15.5205 12.4681 16.8097C13.1949 17.1248 13.7609 17.3138 14.2043 17.4561C14.9324 17.6917 15.5983 17.6579 16.1243 17.5828C16.7077 17.4999 17.9008 16.859 18.1424 16.1785C18.384 15.498 18.384 14.9143 18.3117 14.7923C18.2394 14.6702 18.0451 14.5965 17.7535 14.4506C17.4619 14.3048 17.3178 14.1947 17.6094 14.3405Z" />
+                    </svg>
+                      Contact via WhatsApp
+                    </a>
+        <button
+                    onClick={() => setSubmitSuccess(false)}
+                      className="flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 w-full sm:w-auto"
+        >
+                    Book Another Appointment
+        </button>
+              </div>
+            </div>
+              ) : (
+              <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+                {/* Error Message */}
+                {submitError && (
+                  <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+        </div>
+                      <div className="ml-3">
+                        <h3 className="text-sm font-medium text-red-800">
+                          There was an error with your submission
+                        </h3>
+                        <div className="mt-2 text-sm text-red-700">
+                          <p>{submitError}</p>
+      </div>
+            </div>
+                </div>
+              </div>
+                )}
+                
+                {/* Service Type Selection */}
+                  <div className="bg-white rounded-lg p-6" ref={serviceTypeRef}>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Select Service Type</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {serviceTypes.map((service) => (
+                      <div
+                        key={service.id}
+                        onClick={() => handleServiceTypeChange(service.id)}
+                        className={`relative p-6 rounded-lg cursor-pointer transition-all duration-300 ${
+                          formData.serviceType === service.id
+                            ? 'bg-rose-50 border-2 border-rose-500'
+                            : 'bg-white border-2 border-gray-200 hover:border-rose-300'
+                        }`}
+                      >
+                        {service.id === 'spa' && (
+                          <div className="absolute -top-3 -right-3 bg-rose-500 text-white px-3 py-1 rounded-full text-sm font-medium shadow-md">
+                            Recommended
+                          </div>
+                        )}
+                        <div className="min-h-[280px] flex flex-col">
+                            <div className="flex flex-col items-center mb-3">
+                              {service.icon}
+                              <h3 className="text-lg font-semibold">{service.name}</h3>
+                            </div>
+                          <p className="text-gray-600 mb-4 min-h-[48px]">{service.description}</p>
+                          <div className="flex justify-between items-center mb-4">
+                            <p className="text-gray-900 font-bold text-2xl">{service.price}</p>
+                            <p className="text-gray-500">{service.duration}</p>
+                          </div>
+                          <ul className="space-y-2 flex-grow">
+                            {service.features.map((feature, index) => (
+                              <li key={index} className="flex items-start text-gray-600">
+                                <span className="text-gray-600 mr-2 flex-shrink-0">•</span>
+                                <span>{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                  {/* Day Care Options */}
+                  <div className="space-y-4">
+                    <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center">
+                      <Home className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-rose-500" />
+                      Day Care Options
+                    </h2>
+                    <div className="bg-white rounded-lg p-6 border border-gray-200">
+                      <div className="space-y-4">
+                        {/* Walk-in Notice */}
+                        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                          <div className="flex">
+                            <div className="flex-shrink-0">
+                              <Clock className="h-5 w-5 text-blue-400" />
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm text-blue-700">
+                                <span className="font-medium">Walk-in Day Care Service:</span> For day care only (without grooming), please walk in directly during business hours (10:00 AM - 10:00 PM).
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={formData.dayCare.enabled}
+                              onChange={(e) => setFormData({
+                                ...formData,
+                                dayCare: {
+                                  ...formData.dayCare,
+                                  enabled: e.target.checked,
+                                  type: e.target.checked ? formData.dayCare.type : 'daily',
+                                  days: e.target.checked ? formData.dayCare.days : 1
+                                }
+                              })}
+                              className="h-4 w-4 text-rose-600 focus:ring-rose-500 border-gray-300 rounded"
+                            />
+                            <span className="text-gray-700">Add Day Care Service with Grooming</span>
+                          </label>
+                          <div className="text-sm text-gray-500">
+                            Daily: RM50 | Long Term: RM80/day
+                          </div>
+                        </div>
+
+                        {formData.dayCare.enabled && (
+                          <div className="space-y-4 pl-6">
+                            <div className="flex flex-col space-y-2">
+                              <label className="text-sm font-medium text-gray-700">Day Care Type</label>
+                              <div className="flex space-x-4">
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData({
+                                    ...formData,
+                                    dayCare: {
+                                      ...formData.dayCare,
+                                      type: 'daily',
+                                      days: 1
+                                    }
+                                  })}
+                                  className={`px-4 py-2 rounded-lg border ${
+                                    formData.dayCare.type === 'daily'
+                                      ? 'bg-rose-50 border-rose-500 text-rose-600'
+                                      : 'border-gray-300 text-gray-600 hover:border-rose-300'
+                                  }`}
+                                >
+                                  Daily (RM50)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData({
+                                    ...formData,
+                                    dayCare: {
+                                      ...formData.dayCare,
+                                      type: 'longTerm',
+                                      days: 2
+                                    }
+                                  })}
+                                  className={`px-4 py-2 rounded-lg border ${
+                                    formData.dayCare.type === 'longTerm'
+                                      ? 'bg-rose-50 border-rose-500 text-rose-600'
+                                      : 'border-gray-300 text-gray-600 hover:border-rose-300'
+                                  }`}
+                                >
+                                  Long Term (RM80/day)
+                                </button>
+                              </div>
+                            </div>
+
+                            {formData.dayCare.type === 'longTerm' && (
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Number of Days</label>
+                                <div className="flex items-center space-x-4">
+                                  <input
+                                  type="text"
+                                    value={formData.dayCare.days}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === '') {
+                                      // 如果用户清空输入框，设置为空字符串
+                                      setFormData({
+                                      ...formData,
+                                      dayCare: {
+                                        ...formData.dayCare,
+                                          days: ''
+                                        }
+                                      });
+                                      return;
+                                    }
+                                    
+                                    const numValue = parseInt(value);
+                                    // 如果可以转换为数字就保存为数字，否则保存为字符串
+                                    setFormData({
+                                      ...formData,
+                                      dayCare: {
+                                        ...formData.dayCare,
+                                        days: isNaN(numValue) ? value : numValue
+                                      }
+                                    });
+                                  }}
+                                    className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                                  />
+                                  <span className="text-sm text-gray-500">
+                                  Total: RM {typeof formData.dayCare.days === 'number' && formData.dayCare.days > 1 ? formData.dayCare.days * 80 : 0}
+                                  </span>
+                                </div>
+                              {typeof formData.dayCare.days === 'number' && formData.dayCare.days < 2 && (
+                                <p className="text-sm text-rose-600 mt-1">Minimum 2 days required for long term day care</p>
+                              )}
+                              {typeof formData.dayCare.days !== 'number' && (
+                                <p className="text-sm text-rose-600 mt-1">Please enter a valid number</p>
+                              )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Total Price Display */}
+                  <div className="bg-rose-50 rounded-lg p-4 border border-rose-200">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-lg font-semibold text-gray-900">Total Price:</span>
+                      <span className="text-2xl font-bold text-gray-900">RM{calculateTotalPrice(formData.serviceType, formData.dayCare, isMember)}</span>
+                    </div>
+                    <div className="flex justify-end">
+                      <button 
+                        type="button"
+                        onClick={() => setIsPriceDropdownOpen(!isPriceDropdownOpen)}
+                        className="text-sm text-gray-600 hover:text-gray-800 flex items-center"
+                      >
+                        {isPriceDropdownOpen ? 'Hide details' : 'Show details'}
+                        <svg 
+                          className={`ml-1 h-4 w-4 transition-transform ${isPriceDropdownOpen ? 'transform rotate-180' : ''}`} 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          viewBox="0 0 20 20" 
+                          fill="currentColor"
+                        >
+                          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    {isPriceDropdownOpen && (
+                      <div className="mt-3 pt-3 border-t border-rose-200">
+                        <div className="space-y-2">
+                          {formData.serviceType && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Service: {serviceTypes.find(s => s.id === formData.serviceType)?.name || 'Not selected'}</span>
+                              <span className="text-gray-800">RM{calculateBasePrice(formData.serviceType)}</span>
+                            </div>
+                          )}
+                          
+                          {formData.dayCare.enabled && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">
+                                Day Care: {formData.dayCare.type === 'daily' ? 'Daily' : 'Long Term'} 
+                                {formData.dayCare.type === 'longTerm' && typeof formData.dayCare.days === 'number' && ` (${formData.dayCare.days} days)`}
+                              </span>
+                              <span className="text-gray-800">RM{calculateDayCarePrice(formData.dayCare)}</span>
+                            </div>
+                          )}
+                          
+                          {isMember && formData.serviceType && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">
+                                Member Discount: 
+                                {formData.serviceType === 'spa' ? ' 10%' : ' 8%'}
+                              </span>
+                              <span className="text-rose-600">
+                                -RM{(
+                                  (calculateBasePrice(formData.serviceType) + calculateDayCarePrice(formData.dayCare)) - 
+                                  calculateTotalPrice(formData.serviceType, formData.dayCare, true)
+                                ).toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                          
+                          <div className="flex justify-between text-sm font-medium pt-2 border-t border-rose-100">
+                            <span className="text-gray-800">Total Amount</span>
+                            <span className="text-gray-900 font-bold">RM{calculateTotalPrice(formData.serviceType, formData.dayCare, isMember)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                {/* Personal Information */}
+                <div className="space-y-4 sm:space-y-6">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Personal Information
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <div>
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                        Your Name
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                          name="ownerName"
+                        value={formData.ownerName}
+                        onChange={handleInputChange}
+                        onBlur={handleBlur}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors duration-300"
+                        required
+                          placeholder="Your name is required"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        id="phone"
+                          name="ownerPhone"
+                        value={formData.ownerPhone}
+                        onChange={handleInputChange}
+                        onBlur={handleBlur}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors duration-300"
+                        required
+                          placeholder="Phone number is required"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
+                        Email
+                      </label>
+                      <input
+                          className={`w-full px-4 py-2 border ${emailError && !user ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-rose-500'} rounded-lg focus:ring-2 focus:border-transparent transition-colors duration-300 ${user ? 'bg-gray-100' : ''}`}
+                        id="email"
+                          name="ownerEmail"
+                        type="email"
+                        required
+                        value={user ? user.email : formData.ownerEmail}
+                        onChange={(e) => {
+                          handleInputChange(e);
+                          if (!user && e.target.value) {
+                            validateEmail(e.target.value);
+                          }
+                        }}
+                        onBlur={(e) => validateEmail(e.target.value)}
+                        disabled={!!user}
+                        placeholder="Please enter a valid email address"
+                      />
+                      {emailError && !user && (
+                        <p className="text-sm text-red-500 mt-1">{emailError}</p>
+                      )}
+                      {user && (
+                        <p className="text-xs text-gray-500 mt-1">Email is locked to your member account for security purposes.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pet Information */}
+                <div className="space-y-4 sm:space-y-6">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center">
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    Pet Information
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Pet Type
+                      </label>
+                      <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, petType: 'dog' })}
+                          className={`flex items-center justify-center px-4 py-2 rounded-lg border transition-all duration-300 ${
+                            formData.petType === 'dog'
+                              ? 'bg-rose-100 border-rose-500 text-rose-600 shadow-md'
+                              : 'border-gray-300 text-gray-600 hover:border-rose-300'
+                          }`}
+                        >
+                          <Dog className="w-5 h-5 mr-2" />
+                          Dog
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, petType: 'cat' })}
+                          className={`flex items-center justify-center px-4 py-2 rounded-lg border transition-all duration-300 ${
+                            formData.petType === 'cat'
+                              ? 'bg-rose-100 border-rose-500 text-rose-600 shadow-md'
+                              : 'border-gray-300 text-gray-600 hover:border-rose-300'
+                          }`}
+                        >
+                          <Cat className="w-5 h-5 mr-2" />
+                          Cat
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="petName" className="block text-sm font-medium text-gray-700 mb-1">
+                        Pet's Name
+                      </label>
+                      <input
+                        type="text"
+                        id="petName"
+                        name="petName"
+                        value={formData.petName}
+                        onChange={handleInputChange}
+                        onBlur={handleBlur}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors duration-300"
+                        required
+                          placeholder="Pet name is required"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Date and Time Selection */}
+                <div className="space-y-4 sm:space-y-6">
+                  <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center" id="schedule-section">
+                    <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-rose-500" />
+                    Schedule
+                  </h2>
+                  
+                  {/* Date Selection */}
+                  <div className="bg-white rounded-lg p-6 border border-gray-200 mb-4">
+                    <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-2">
+                        Date
+                      </label>
+                    <div className="relative rounded-md shadow-sm">
+                        <input
+                        type="text"
+                          name="date"
+                        id="date"
+                        className="cursor-pointer focus:ring-rose-500 focus:border-rose-500 block w-full pl-3 pr-12 sm:text-sm border-gray-300 rounded-md h-10"
+                        placeholder="mm/dd/yyyy"
+                          value={formData.date}
+                        onClick={() => {
+                          const dateInput = document.getElementById('date') as HTMLInputElement;
+                          if (dateInput) {
+                            dateInput.type = 'date';
+                            dateInput.showPicker && dateInput.showPicker();
+                          }
+                        }}
+                          onChange={handleInputChange}
+                          min={getCurrentDate()}
+                        ref={dateInputRef}
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer" 
+                           onClick={() => {
+                             const dateInput = document.getElementById('date') as HTMLInputElement;
+                             if (dateInput) {
+                               dateInput.type = 'date';
+                               dateInput.showPicker && dateInput.showPicker();
+                             }
+                           }}>
+                        <Calendar className="h-5 w-5 text-gray-400" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Time Selection */}
+                  <div className="bg-white rounded-lg p-6 border border-gray-200" ref={timeSelectionRef}>
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Time
+                      </h3>
+                      {formData.serviceType && (
+                        <div className="text-sm text-gray-600">
+                          Service Duration: {getServiceDuration(formData.serviceType)} hours
+                        </div>
+                      )}
+                    </div>
+                    
+                    {!formData.date ? (
+                      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                        <div className="flex">
+                          <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm text-yellow-700">
+                              Please select a date first.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : !formData.serviceType ? (
+                      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                        <div className="flex">
+                          <div className="flex-shrink-0">
+                            <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div className="ml-3">
+                            <p className="text-sm text-yellow-700">
+                              Please select a service type first.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        className="grid grid-cols-4 gap-4 p-4"
+                        onClick={(e) => {
+                          const target = e.target as HTMLElement;
+                          // Check if clicking the container or its immediate child (the grid)
+                          if (target.classList.contains('time-container') || 
+                              target.parentElement?.classList.contains('time-container')) {
+                            setFormData(prev => ({
+                              ...prev,
+                              time: ''
+                            }));
+                          }
+                        }}
+                      >
+                        <div className="time-container col-span-4 grid grid-cols-4 gap-4">
+                        {getValidTimeOptions().map((time) => {
+                          // 从timeSlots数组中查找对应的时间槽
+                          const timeSlot = timeSlots.find(slot => slot.time === time);
+                          
+                          // 获取基本可用性信息（单一时间段）
+                          const basicAvailability = timeSlot ? timeSlot.isAvailable : true;
+                          const currentBookings = timeSlot ? timeSlot.currentBookings : 0;
+                          
+                          // 考虑服务持续时间的可用性（多时间段）
+                          const isAvailableForService = isTimeSlotAvailableForService(time);
+                          
+                          return (
+                              <TimeSlotButton
+                              key={time}
+                                time={time}
+                                isSelected={formData.time === time}
+                                isAvailable={isAvailableForService}
+                                currentBookings={currentBookings}
+                              />
+                          );
+                        })}
+                        </div>
+                            </div>
+                          )}
+                  </div>
+                </div>
+
+                {/* Additional Notes */}
+                <div>
+                  <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+                    Additional Notes
+                  </label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors duration-300 text-sm sm:text-base"
+                    placeholder="Any special requirements or notes for our groomers..."
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-colors duration-300 ${
+                    isFormValid() 
+                      ? 'bg-rose-600 hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500' 
+                      : 'bg-gray-400 cursor-not-allowed'
+                  }`}
+                  disabled={isSubmitting || !isFormValid()}
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Processing...
+                    </div>
+                  ) : (
+                    "Book Appointment"
+                  )}
+                </button>
+              </form>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default GroomingAppointment; 
