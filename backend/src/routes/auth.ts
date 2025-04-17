@@ -463,7 +463,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
               Reset Password
             </a>
           </div>
-          <p style="word-break: break-all;">如果按钮无法点击，请复制以下链接到浏览器地址栏：<br>${resetUrl}</p>
+          <p style="word-break: break-all;">If the button does not work, please copy the following link to your browser address bar:<br>${resetUrl}</p>
           <p>If you did not request this password reset, please ignore this email.</p>
           <p>This link will expire in 1 hour.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
