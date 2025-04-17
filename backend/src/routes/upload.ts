@@ -24,10 +24,9 @@ const storage = multer.diskStorage({
     cb(null, backendUploadsDir);
   },
   filename: (req, file, cb) => {
-    // 使用原始文件名，保持文件扩展名
+    // 使用UUID和原始扩展名
     const ext = path.extname(file.originalname);
-    const filename = file.originalname.replace(ext, '').replace(/\s+/g, '_');
-    const uniqueFilename = `${filename}${ext}`;
+    const uniqueFilename = `${uuidv4()}${ext}`;
     cb(null, uniqueFilename);
   }
 });
@@ -71,6 +70,11 @@ router.post('/pet-image', auth, upload.single('image'), (req: Request, res: Resp
 
     // 返回图片URL（使用相对路径）
     const imageUrl = `/imgs/${req.file.filename}`;
+    console.log('Image uploaded successfully:', {
+      originalPath: req.file.path,
+      frontendPath,
+      imageUrl
+    });
 
     // 返回图片URL
     res.json({ imageUrl });
