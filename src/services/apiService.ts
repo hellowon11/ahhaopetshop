@@ -17,7 +17,7 @@ interface LoginResponse {
   token: string;
 }
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://你的新后端URL.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4003';
 
 // Create axios instance
 const api = axios.create({

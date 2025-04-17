@@ -1,7 +1,8 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
-import { authenticateToken, isAdmin } from '../middleware/auth';
+import { auth } from '../middleware/auth';
+import { isAdmin } from '../middleware/admin';
 import {
   getShopInformation,
   updateShopInformation,
@@ -42,7 +43,7 @@ const upload = multer({
 router.get('/', getShopInformation);
 
 // 以下路由需要管理员权限
-router.use(authenticateToken, isAdmin);
+router.use(auth, isAdmin);
 
 // 更新店铺基本信息
 router.put('/', updateShopInformation);

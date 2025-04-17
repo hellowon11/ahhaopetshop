@@ -31,7 +31,7 @@ const fixAllPetIds = async () => {
     // First set all IDs to temporary values to avoid conflicts
     console.log('Setting temporary IDs...');
     for (const pet of allPets) {
-      const tempId = `TEMP_${pet.type}_${pet._id.toString()}`;
+      const tempId = `TEMP_${pet.type}_${String(pet._id)}`;
       await ShopPet.updateOne(
         { _id: pet._id },
         { $set: { petId: tempId } }
@@ -79,7 +79,7 @@ const fixAllPetIds = async () => {
         console.log(`Set ${dog.name} to ID ${desiredId}`);
       } else {
         // If no mapping is defined, use a fallback ID
-        const fallbackId = `#999_${dog._id.toString().slice(-4)}`;
+        const fallbackId = `#999_${String(dog._id).slice(-4)}`;
         await ShopPet.updateOne(
           { _id: dog._id },
           { $set: { petId: fallbackId } }
@@ -124,7 +124,7 @@ const fixAllPetIds = async () => {
     if (petsWithoutIds.length > 0) {
       console.log(`Warning: Found ${petsWithoutIds.length} pets without proper IDs!`);
       for (const pet of petsWithoutIds) {
-        const fallbackId = `${pet.type === 'dog' ? '#' : 'C'}999_${pet._id.toString().slice(-4)}`;
+        const fallbackId = `${pet.type === 'dog' ? '#' : 'C'}999_${String(pet._id).slice(-4)}`;
         await ShopPet.updateOne(
           { _id: pet._id },
           { $set: { petId: fallbackId } }
