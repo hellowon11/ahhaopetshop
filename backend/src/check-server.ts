@@ -1,4 +1,11 @@
 import http from 'http';
+import axios from 'axios';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const BACKEND_URL = process.env.BACKEND_URL || 'https://ahhaopetshop-backend.onrender.com';
+const PING_INTERVAL = 3 * 60 * 1000; // 3 minutes in milliseconds
 
 // 检查4003端口是否被占用
 const checkPort = (port: number): Promise<boolean> => {
@@ -72,5 +79,24 @@ const main = async () => {
   console.log('npm start');
   console.log('==========================================');
 };
+
+async function pingServer() {
+    try {
+        const response = await axios.get(BACKEND_URL);
+        console.log(`[${new Date().toISOString()}] Server pinged successfully:`, response.data);
+    } catch (error) {
+        console.error(`[${new Date().toISOString()}] Error pinging server:`, 
+            error && typeof error === 'object' && 'message' in error ? error.message : 'Unknown error'
+        );
+    }
+}
+
+// Initial ping
+pingServer();
+
+// Set up interval
+setInterval(pingServer, PING_INTERVAL);
+
+console.log(`Server check started. Pinging ${BACKEND_URL} every ${PING_INTERVAL/1000} seconds.`);
 
 main().catch(console.error); 
