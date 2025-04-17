@@ -420,6 +420,10 @@ const AllPets: React.FC = () => {
                     src={pet.imageUrl}
                     alt={pet.name}
                     className="w-full h-full object-contain bg-gray-50 transition-transform duration-300 hover:scale-105"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/default-pet-image.png';
+                    }}
                   />
                   <button 
                     onClick={() => setEnlargedImage(pet.imageUrl)}
