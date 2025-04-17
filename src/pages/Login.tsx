@@ -25,7 +25,7 @@ const fadeInDownAnimation = `
   }
 `;
 
-const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:4003/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4003';
 
 // API响应接口定义
 interface PreRegisterResponse {
