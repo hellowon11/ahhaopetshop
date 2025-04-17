@@ -68,18 +68,18 @@ app.use((req, res, next) => {
 });
 
 // 路由
-app.use('/api/auth', authRoutes);
-app.use('/api/pets', petRoutes);
-app.use('/api/appointments', appointmentRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/user-login-status', userLoginStatusRouter);
-app.use('/api/admin', adminRoutes);
-app.use('/api/shop-pets', shopPetsRoutes);
-app.use('/api/favourites', favouriteRoutes);
-app.use('/api/upload', uploadRoutes);
-app.use('/api/services', groomingServicesRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/benefits', memberBenefitsRoutes);
+app.use('/auth', authRoutes);
+app.use('/pets', petRoutes);
+app.use('/appointments', appointmentRoutes);
+app.use('/notifications', notificationRoutes);
+app.use('/user-login-status', userLoginStatusRouter);
+app.use('/admin', adminRoutes);
+app.use('/shop-pets', shopPetsRoutes);
+app.use('/favourites', favouriteRoutes);
+app.use('/upload', uploadRoutes);
+app.use('/services', groomingServicesRoutes);
+app.use('/settings', settingsRoutes);
+app.use('/benefits', memberBenefitsRoutes);
 
 // 添加根路径处理
 app.get('/', (req, res) => {
@@ -87,18 +87,18 @@ app.get('/', (req, res) => {
     message: 'AH HAO Pet Shop API is running',
     version: '1.0.0',
     endpoints: [
-      '/api/auth',
-      '/api/pets',
-      '/api/appointments',
-      '/api/notifications',
-      '/api/user-login-status',
-      '/api/admin',
-      '/api/shop-pets',
-      '/api/favourites',
-      '/api/upload',
-      '/api/services',
-      '/api/settings',
-      '/api/benefits'
+      '/auth',
+      '/pets',
+      '/appointments',
+      '/notifications',
+      '/user-login-status',
+      '/admin',
+      '/shop-pets',
+      '/favourites',
+      '/upload',
+      '/services',
+      '/settings',
+      '/benefits'
     ]
   });
 });
