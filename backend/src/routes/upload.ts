@@ -8,7 +8,7 @@ import { auth } from '../middleware/auth';
 const router = express.Router();
 
 // 创建上传目录
-const uploadsDir = path.join(__dirname, '../../public/uploads/pets');
+const uploadsDir = path.join(__dirname, '../../../public/imgs');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -19,8 +19,10 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    // 生成唯一文件名
-    const uniqueFilename = `${uuidv4()}-${Date.now()}${path.extname(file.originalname)}`;
+    // 使用原始文件名，保持文件扩展名
+    const ext = path.extname(file.originalname);
+    const filename = file.originalname.replace(ext, '').replace(/\s+/g, '_');
+    const uniqueFilename = `${filename}${ext}`;
     cb(null, uniqueFilename);
   }
 });
@@ -58,9 +60,8 @@ router.post('/pet-image', auth, upload.single('image'), (req: Request, res: Resp
       return res.status(400).json({ message: 'No image file provided' });
     }
 
-    // 构建图片URL
-    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 4003}`;
-    const imageUrl = `${baseUrl}/uploads/pets/${req.file.filename}`;
+    // 返回图片URL（使用相对路径）
+    const imageUrl = `/imgs/${req.file.filename}`;
 
     // 返回图片URL
     res.json({ imageUrl });
