@@ -81,6 +81,28 @@ app.use('/api/services', groomingServicesRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/benefits', memberBenefitsRoutes);
 
+// 添加根路径处理
+app.get('/', (req, res) => {
+  res.json({
+    message: 'AH HAO Pet Shop API is running',
+    version: '1.0.0',
+    endpoints: [
+      '/api/auth',
+      '/api/pets',
+      '/api/appointments',
+      '/api/notifications',
+      '/api/user-login-status',
+      '/api/admin',
+      '/api/shop-pets',
+      '/api/favourites',
+      '/api/upload',
+      '/api/services',
+      '/api/settings',
+      '/api/benefits'
+    ]
+  });
+});
+
 // 初始化默认服务数据
 initializeDefaultServices().catch(err => {
   console.error('Failed to initialize default services:', err);
