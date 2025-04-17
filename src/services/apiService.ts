@@ -686,9 +686,36 @@ export const apiService = {
         throw error;
       }
     },
+    add: async (petId: string) => {
+      try {
+        const response = await api.post('/favourites', { petId });
+        return response.data;
+      } catch (error) {
+        console.error('Failed to add favourite:', error);
+        throw error;
+      }
+    },
+    remove: async (petId: string) => {
+      try {
+        const response = await api.delete(`/favourites/${petId}`);
+        return response.data;
+      } catch (error) {
+        console.error('Failed to remove favourite:', error);
+        throw error;
+      }
+    },
+    check: async (petId: string) => {
+      try {
+        const response = await api.get(`/favourites/check/${petId}`);
+        return response.data.isFavourite;
+      } catch (error) {
+        console.error('Failed to check favourite status:', error);
+        throw error;
+      }
+    }
   },
 
-  // 美容服务相关 
+  // 美容服务相关
   services: {
     // 获取所有美容服务
     getGroomingServices: async () => {
