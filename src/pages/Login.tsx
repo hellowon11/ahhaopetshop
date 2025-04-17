@@ -496,10 +496,11 @@ const Login: React.FC = () => {
         setResetEmailSent(true);
         setShowSuccessModal(true);
         
-        // 添加1秒后自动重新加载页面的功能
+        // 设置2秒后关闭成功提示框
         setTimeout(() => {
-          navigate('/login', { replace: true });
-        }, 1000);
+          setShowSuccessModal(false);
+          setResetEmailSent(false);
+        }, 2000);
       }
     } catch (err: any) {
       console.error('Forgot password error:', err);
