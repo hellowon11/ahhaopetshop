@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@auth/core": "^0.38.0",
+    "@auth/core": "0.34.2",
     "@auth/nextjs": "^0.0.0-380f8d56",
     "@emailjs/browser": "^3.12.1",
     "@emotion/react": "^11.14.0",
