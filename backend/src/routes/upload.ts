@@ -4,7 +4,10 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { auth } from '../middleware/auth';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
+const execAsync = promisify(exec);
 const router = express.Router();
 
 // 创建上传目录
@@ -50,8 +53,25 @@ const upload = multer({
   }
 });
 
+// 自动将新图片添加到Git
+async function addImageToGit(imagePath: string) {
+  try {
+    // 获取项目根目录
+    const rootDir = path.join(__dirname, '../../..');
+    
+    // 执行git命令
+    await execAsync('git add "' + imagePath + '"', { cwd: rootDir });
+    await execAsync('git commit -m "Add new pet image: ' + path.basename(imagePath) + '"', { cwd: rootDir });
+    
+    console.log('Successfully added image to git:', imagePath);
+  } catch (error) {
+    console.error('Failed to add image to git:', error);
+    // 不抛出错误，因为这不应该影响上传功能
+  }
+}
+
 // 上传宠物图片路由 (需要管理员权限)
-router.post('/pet-image', auth, upload.single('image'), (req: Request, res: Response) => {
+router.post('/pet-image', auth, upload.single('image'), async (req: Request, res: Response) => {
   try {
     // 检查是否有管理员权限
     const user = (req as any).user;
@@ -75,6 +95,9 @@ router.post('/pet-image', auth, upload.single('image'), (req: Request, res: Resp
       frontendPath,
       imageUrl
     });
+
+    // 将新图片添加到Git（异步操作，不等待完成）
+    addImageToGit(path.relative(path.join(__dirname, '../../..'), frontendPath));
 
     // 返回图片URL
     res.json({ imageUrl });
