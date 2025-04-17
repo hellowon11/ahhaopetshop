@@ -146,8 +146,8 @@ const MemberDashboard: React.FC = () => {
         const notificationsData = await apiService.notifications.getAll();
         setNotifications(notificationsData);
       } catch (error) {
-        console.error('加载用户数据失败:', error);
-        setError('加载数据失败，请刷新页面重试');
+        console.error('Failed to load user data:', error);
+        setError('Failed to load data. Please refresh the page and try again.');
       } finally {
         setLoading(false);
       }
@@ -159,7 +159,7 @@ const MemberDashboard: React.FC = () => {
     const checkRefreshFlag = () => {
       const shouldRefresh = sessionStorage.getItem('refreshDashboard');
       if (shouldRefresh === 'true') {
-        console.log('检测到仪表板刷新标记，重新加载数据...');
+        console.log('Dashboard refresh flag detected, reloading data...');
         sessionStorage.removeItem('refreshDashboard');
         loadUserData();
       }
@@ -170,7 +170,7 @@ const MemberDashboard: React.FC = () => {
 
     // 添加预约创建事件监听器
     const handleAppointmentCreated = () => {
-      console.log('检测到预约创建事件，重新加载仪表板数据');
+      console.log('Appointment creation event detected, reloading dashboard data');
       loadUserData();
     };
 
@@ -204,8 +204,8 @@ const MemberDashboard: React.FC = () => {
         n._id === notificationId ? { ...n, isRead: true } : n
       ));
     } catch (error) {
-      console.error('标记通知为已读失败:', error);
-      setError('操作失败，请重试');
+      console.error('Failed to mark notification as read:', error);
+      setError('Operation failed. Please try again.');
     }
   };
 
@@ -215,8 +215,8 @@ const MemberDashboard: React.FC = () => {
       await apiService.notifications.markAllAsRead();
       setNotifications(notifications.map(n => ({ ...n, isRead: true })));
     } catch (error) {
-      console.error('标记所有通知为已读失败:', error);
-      setError('操作失败，请重试');
+      console.error('Failed to mark all notifications as read:', error);
+      setError('Operation failed. Please try again.');
     }
   };
 
@@ -226,8 +226,8 @@ const MemberDashboard: React.FC = () => {
       await apiService.notifications.delete(notificationId);
       setNotifications(notifications.filter(n => n._id !== notificationId));
     } catch (error) {
-      console.error('删除通知失败:', error);
-      setError('删除失败，请重试');
+      console.error('Failed to delete notification:', error);
+      setError('Delete failed. Please try again.');
     }
   };
 
@@ -509,7 +509,7 @@ const MemberDashboard: React.FC = () => {
     }
   };
 
-  // 处理预约更新
+  // Handle appointment update
   const handleUpdateAppointment = async (id: string, appointmentData: Partial<Appointment>) => {
     try {
       const updatedAppointment = await apiService.appointments.update(id, appointmentData);
@@ -517,19 +517,19 @@ const MemberDashboard: React.FC = () => {
         appointment._id === id ? updatedAppointment : appointment
       ));
     } catch (error) {
-      console.error('更新预约失败:', error);
-      setError('更新预约失败，请重试');
+      console.error('Failed to update appointment:', error);
+      setError('Failed to update appointment. Please try again.');
     }
   };
 
-  // 处理预约删除
+  // Handle appointment deletion
   const handleDeleteAppointment = async (id: string) => {
     try {
       await apiService.appointments.delete(id);
       setAppointments(appointments.filter(appointment => appointment._id !== id));
     } catch (error) {
-      console.error('删除预约失败:', error);
-      setError('删除预约失败，请重试');
+      console.error('Failed to delete appointment:', error);
+      setError('Failed to delete appointment. Please try again.');
     }
   };
 
@@ -541,8 +541,8 @@ const MemberDashboard: React.FC = () => {
         notification._id === id ? { ...notification, isRead: true } : notification
       ));
     } catch (error) {
-      console.error('标记通知为已读失败:', error);
-      setError('操作失败，请重试');
+      console.error('Failed to mark notification as read:', error);
+      setError('Operation failed. Please try again.');
     }
   };
 
@@ -553,11 +553,11 @@ const MemberDashboard: React.FC = () => {
       setNotifications(notifications.filter(notification => notification._id !== id));
     } catch (error) {
       console.error('Failed to delete notification:', error);
-      setError('Failed to delete notification. Please try again.');
+      setError('Delete failed. Please try again.');
     }
   };
 
-  // 处理个人资料更新
+  // Handle profile update
   const handleUpdateProfile = async (userData: Partial<User>) => {
     try {
       const updatedUser = await apiService.user.update(userData);
@@ -570,8 +570,8 @@ const MemberDashboard: React.FC = () => {
         setIsEditing(false);
       }
     } catch (error) {
-      console.error('更新个人资料失败:', error);
-      setError('更新个人资料失败，请重试');
+      console.error('Failed to update profile:', error);
+      setError('Failed to update profile. Please try again.');
     }
   };
 
@@ -664,27 +664,39 @@ const MemberDashboard: React.FC = () => {
           notifications.map(notification => (
             <div
               key={notification._id}
-              className={`px-3 md:px-4 py-2 md:py-3 hover:bg-gray-50 relative group border-b border-gray-100 last:border-b-0 ${
+              className={`px-3 md:px-4 py-2 md:py-3 hover:bg-gray-100 transition-colors duration-200 relative group border-b border-gray-100 last:border-b-0 ${
                 !notification.isRead ? 'bg-blue-50/80 backdrop-blur-sm' : ''
-              } ${isSelectionMode ? 'cursor-pointer' : ''}`}
+              } cursor-pointer`}
               onClick={(e) => {
                 if (isSelectionMode) {
                   e.stopPropagation();
                   toggleNotificationSelection(notification._id);
-                } else if (!notification.isRead) {
-                  handleMarkNotificationAsRead(notification._id);
+                } else {
+                  // 标记任何通知为已读
+                  if (!notification.isRead) {
+                    handleMarkNotificationAsRead(notification._id);
+                  }
+                  // Add other notification click handling logic here, such as navigation
+                  console.log('Notification clicked:', notification.title);
                 }
               }}
+              style={{ cursor: isSelectionMode ? 'pointer' : 'pointer' }}
             >
               <div className="flex items-start">
                 {/* 选择框 */}
                 {isSelectionMode && (
-                  <div className="mr-3 mt-1">
+                  <div 
+                    className="mr-3 mt-1 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation(); // 阻止冒泡，避免触发父元素的点击事件
+                      toggleNotificationSelection(notification._id);
+                    }}
+                  >
                     <input
                       type="checkbox"
                       checked={selectedNotifications.includes(notification._id)}
-                      onChange={() => toggleNotificationSelection(notification._id)}
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      onChange={() => {}} // 空函数，实际点击处理由父div处理
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                     />
                   </div>
                 )}
@@ -697,9 +709,17 @@ const MemberDashboard: React.FC = () => {
                     </svg>
                   </div>
                   <div className="flex-grow">
-                    <p className="text-xs md:text-sm font-medium text-gray-900">
-                      {notification.title}
-                    </p>
+                    <div className="flex justify-between items-start">
+                      <p className="text-xs md:text-sm font-medium text-gray-900">
+                        {notification.title}
+                      </p>
+                      {notification.isRead && (
+                        <span className="text-xs text-blue-500 ml-2 flex items-center">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          <span className="hidden md:inline-block">Read</span>
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs md:text-sm text-gray-600 mt-1">
                       {notification.message}
                     </p>
@@ -740,7 +760,7 @@ const MemberDashboard: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="loading">加载中...</div>;
+    return <div className="loading">Loading...</div>;
   }
 
   if (error) {
@@ -821,7 +841,7 @@ const MemberDashboard: React.FC = () => {
                     <div 
                       className="profile-dropdown absolute right-0 mt-2 w-64 md:w-80 bg-white rounded-lg border border-slate-200 py-2 z-50"
                       onClick={(e) => {
-                        // 防止点击下拉菜单内部时触发外部点击事件
+                        // Prevent outer click event when clicking inside dropdown menu
                         e.stopPropagation();
                       }}
                     >
