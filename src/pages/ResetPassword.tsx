@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle, XCircle } from 'lucide-react';
 import axios from 'axios';
@@ -19,13 +19,22 @@ const ResetPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // 页面加载时检查token
+  useEffect(() => {
+    if (!token) {
+      setError('Invalid reset token - No token provided in URL');
+    } else {
+      console.log('Token found in URL:', token.substring(0, 5) + '...' + token.substring(token.length - 5));
+    }
+  }, [token]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     if (!token) {
-      setError('Invalid reset token');
+      setError('Invalid reset token - Token is missing');
       setLoading(false);
       return;
     }
@@ -37,10 +46,22 @@ const ResetPassword: React.FC = () => {
     }
 
     try {
-      const response = await axios.post<ResetPasswordResponse>(`${API_URL}/auth/reset-password`, {
-        token,
-        newPassword: password
-      });
+      console.log('Sending password reset request with token:', token.substring(0, 5) + '...' + token.substring(token.length - 5));
+      
+      const response = await axios.post<ResetPasswordResponse>(
+        `${API_URL}/auth/reset-password`, 
+        {
+          token: token.trim(), // 确保token没有额外的空格
+          newPassword: password
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Password reset response:', response.data);
 
       if (response.data.message === 'Password has been reset successfully') {
         setSuccess(true);
@@ -50,6 +71,8 @@ const ResetPassword: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Reset password error:', err);
+      console.error('Error details:', err.response?.data);
+      
       if (err.response?.data?.message === 'Invalid or expired reset token') {
         setError('The password reset link has expired. Please request a new one.');
       } else {

@@ -428,17 +428,19 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
 
     console.log('User found:', user.email);
 
-    // 生成重置令牌
-    const resetToken = crypto.randomBytes(32).toString('hex');
+    // 生成较短的重置令牌 (16字节/32个字符，之前是32字节/64个字符)
+    const resetToken = crypto.randomBytes(16).toString('hex');
     const resetTokenExpiry = new Date();
     resetTokenExpiry.setHours(resetTokenExpiry.getHours() + 1);
 
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = resetTokenExpiry;
     await user.save();
-    console.log('Reset token generated and saved');
+    console.log('Reset token generated and saved:', resetToken.substring(0, 5) + '...' + resetToken.substring(resetToken.length - 5));
 
+    // 构建重置URL - 不使用encodeURIComponent
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    console.log('Reset URL generated (partial):', resetUrl.substring(0, 60) + '...');
 
     const mailOptions = {
       from: `"AH HAO PET SHOP" <${process.env.EMAIL_USER}>`,
@@ -456,6 +458,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
               Reset Password
             </a>
           </div>
+          <p style="word-break: break-all;">如果按钮无法点击，请复制以下链接到浏览器地址栏：<br>${resetUrl}</p>
           <p>If you did not request this password reset, please ignore this email.</p>
           <p>This link will expire in 1 hour.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
@@ -508,25 +511,52 @@ router.post('/reset-password', async (req: Request, res: Response) => {
   try {
     const { token, newPassword } = req.body;
     
+    console.log('Reset password request received');
+    console.log('Token received:', token ? `${token.substring(0, 5)}...${token.substring(token.length - 5)}` : 'undefined');
+    
+    if (!token) {
+      console.log('Reset failed: No token provided');
+      return res.status(400).json({ message: 'Reset token is required' });
+    }
+    
+    if (!newPassword) {
+      console.log('Reset failed: No new password provided');
+      return res.status(400).json({ message: 'New password is required' });
+    }
+    
+    // 查找有效的重置令牌
+    console.log('Looking for user with valid reset token...');
     const user = await User.findOne({
       resetPasswordToken: token,
       resetPasswordExpires: { $gt: new Date() }
     });
 
     if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired reset token' });
+      // 查看是否有任何具有此令牌的用户
+      const expiredUser = await User.findOne({ resetPasswordToken: token });
+      
+      if (expiredUser) {
+        console.log('Reset failed: Token expired');
+        return res.status(400).json({ message: 'Reset token has expired' });
+      } else {
+        console.log('Reset failed: Invalid token, no matching user found');
+        return res.status(400).json({ message: 'Invalid reset token' });
+      }
     }
 
+    console.log('Valid token found, updating password for user:', user.email);
+    
     // 更新密码
     user.password = newPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
-
+    
+    console.log('Password reset successful for user:', user.email);
     res.json({ message: 'Password has been reset successfully' });
   } catch (error) {
     console.error('Reset password error:', error);
-    res.status(500).json({ message: 'Failed to reset password' });
+    res.status(500).json({ message: 'Failed to reset password', error: error instanceof Error ? error.message : 'Unknown error' });
   }
 });
 
