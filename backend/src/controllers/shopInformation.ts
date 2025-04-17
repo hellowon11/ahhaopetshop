@@ -32,8 +32,10 @@ export const updateShopInformation = async (req: Request, res: Response) => {
           `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(formattedAddress)}&key=${apiKey}`
         );
 
-        if (response.data.results && response.data.results.length > 0) {
-          const location = response.data.results[0].geometry.location;
+        // 添加类型断言
+        const responseData = response.data as any;
+        if (responseData.results && responseData.results.length > 0) {
+          const location = responseData.results[0].geometry.location;
           address.coordinates = {
             latitude: location.lat,
             longitude: location.lng
