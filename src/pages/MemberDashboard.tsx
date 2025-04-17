@@ -937,11 +937,11 @@ const MemberDashboard: React.FC = () => {
             <div className="flex flex-col md:flex-row md:items-center">
               <button
                 onClick={handleBackToHome}
-                className="inline-flex items-center px-4 py-2 mb-4 md:mb-0 md:mr-4 bg-white text-slate-700 
+                className="inline-flex items-center px-3 py-2 mb-4 md:px-4 md:mb-0 md:mr-4 bg-white text-slate-700 
                         rounded-lg shadow-sm hover:bg-slate-50 border border-slate-200
-                        transition-colors duration-200 group"
+                        transition-colors duration-200 group w-24 md:w-auto"
               >
-                <ArrowLeft className="h-5 w-5 mr-2 group-hover:-translate-x-0.5 transition-transform" />
+                <ArrowLeft className="h-5 w-5 mr-1.5 md:mr-2 group-hover:-translate-x-0.5 transition-transform" />
                 Home
               </button>
               <div>
