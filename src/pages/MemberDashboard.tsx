@@ -934,17 +934,17 @@ const MemberDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto pb-12 px-4 sm:px-6 lg:px-8">
           {/* 欢迎部分 - 移动端优化 */}
           <div className="mb-6 p-2">
-            <div className="flex flex-col md:flex-row md:items-center">
+            <div className="flex flex-row items-start md:items-center">
               <button
                 onClick={handleBackToHome}
-                className="inline-flex items-center px-3 py-2 mb-4 md:px-4 md:mb-0 md:mr-4 bg-white text-slate-700 
+                className="inline-flex items-center px-3 py-2 mr-3 md:px-4 md:mb-0 md:mr-4 bg-white text-slate-700 
                         rounded-lg shadow-sm hover:bg-slate-50 border border-slate-200
-                        transition-colors duration-200 group w-24 md:w-auto"
+                        transition-colors duration-200 group w-auto h-10 md:w-auto self-center"
               >
                 <ArrowLeft className="h-5 w-5 mr-1.5 md:mr-2 group-hover:-translate-x-0.5 transition-transform" />
                 Home
               </button>
-              <div>
+              <div className="pl-1">
                 <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
                 <p className="text-gray-800 font-medium mt-1">{userProfile.name || 'Member'}</p>
                 <p className="text-gray-600 text-sm mt-1">Manage your pets and appointments</p>
