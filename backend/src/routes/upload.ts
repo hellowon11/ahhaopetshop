@@ -8,15 +8,20 @@ import { auth } from '../middleware/auth';
 const router = express.Router();
 
 // 创建上传目录
-const uploadsDir = path.join(__dirname, '../../../public/imgs');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+const backendUploadsDir = path.join(__dirname, '../../public/uploads/pets');
+const frontendImgsDir = path.join(__dirname, '../../../public/imgs');
+
+// 确保目录存在
+[backendUploadsDir, frontendImgsDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 // 配置 multer 存储
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadsDir);
+    cb(null, backendUploadsDir);
   },
   filename: (req, file, cb) => {
     // 使用原始文件名，保持文件扩展名
@@ -59,6 +64,10 @@ router.post('/pet-image', auth, upload.single('image'), (req: Request, res: Resp
     if (!req.file) {
       return res.status(400).json({ message: 'No image file provided' });
     }
+
+    // 复制文件到前端目录
+    const frontendPath = path.join(frontendImgsDir, req.file.filename);
+    fs.copyFileSync(req.file.path, frontendPath);
 
     // 返回图片URL（使用相对路径）
     const imageUrl = `/imgs/${req.file.filename}`;
