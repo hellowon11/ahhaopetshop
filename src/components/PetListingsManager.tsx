@@ -7,6 +7,13 @@ interface PetListingsManagerProps {
   onClose?: () => void;
 }
 
+// 处理图片URL的函数
+const getImageUrl = (url: string) => {
+  if (!url) return '/default-pet-image.png';
+  if (url.startsWith('http')) return url;
+  return url;
+};
+
 const PetListingsManager: React.FC<PetListingsManagerProps> = ({ onClose }) => {
   const [pets, setPets] = useState<ShopPet[]>([]);
   const [allPetsStats, setAllPetsStats] = useState({ listed: 0, unlisted: 0, sold: 0 });
@@ -869,7 +876,15 @@ const PetListingsManager: React.FC<PetListingsManagerProps> = ({ onClose }) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-100">
-                          <img src={pet.imageUrl} alt={pet.name} className="h-full w-full object-cover" />
+                          <img 
+                            src={getImageUrl(pet.imageUrl)} 
+                            alt={pet.name} 
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/default-pet-image.png';
+                            }}
+                          />
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -999,7 +1014,15 @@ const PetListingsManager: React.FC<PetListingsManagerProps> = ({ onClose }) => {
                     {/* Pet Info with Image */}
                     <div className="flex gap-4">
                       <div className="h-24 w-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                        <img src={pet.imageUrl} alt={pet.name} className="h-full w-full object-cover" />
+                        <img 
+                          src={getImageUrl(pet.imageUrl)} 
+                          alt={pet.name} 
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/default-pet-image.png';
+                          }}
+                        />
                       </div>
                       <div className="flex-grow">
                         <h3 className="text-lg font-medium text-gray-900">{pet.name}</h3>
