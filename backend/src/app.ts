@@ -46,6 +46,8 @@ app.use(cookieParser());
 
 // 设置静态文件目录
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+app.use('/public', express.static(path.join(__dirname, '../public')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Log all requests for debugging purposes
 app.use((req, res, next) => {

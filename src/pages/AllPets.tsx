@@ -38,6 +38,14 @@ const AllPets: React.FC = () => {
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const [favourites, setFavourites] = useState<Record<string, boolean>>({});
 
+  // 处理图片URL的函数
+  const getImageUrl = (url: string) => {
+    if (!url) return '/default-pet-image.png';
+    if (url.startsWith('http')) return url;
+    if (url.startsWith('/uploads')) return `${import.meta.env.VITE_API_URL}${url}`;
+    return url;
+  };
+
   // Fetch pets from backend
   useEffect(() => {
     const fetchPets = async () => {
@@ -417,7 +425,7 @@ const AllPets: React.FC = () => {
               >
                 <div className="relative h-64 overflow-hidden">
                   <img
-                    src={pet.imageUrl}
+                    src={getImageUrl(pet.imageUrl)}
                     alt={pet.name}
                     className="w-full h-full object-contain bg-gray-50 transition-transform duration-300 hover:scale-105"
                     onError={(e) => {
@@ -502,7 +510,7 @@ const AllPets: React.FC = () => {
               <X className="w-8 h-8" />
             </button>
             <img 
-              src={enlargedImage} 
+              src={getImageUrl(enlargedImage)} 
               alt="Enlarged pet" 
               className="max-w-full max-h-[80vh] object-contain"
               onClick={(e) => e.stopPropagation()}
