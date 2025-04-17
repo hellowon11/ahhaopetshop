@@ -695,16 +695,38 @@ const GroomingAppointment: React.FC = () => {
           
           // 发送确认邮件给客户
           try {
+            // 准备日托信息文本
+            let dayCareInfoText = 'Not selected';
+            if (formData.dayCare.enabled) {
+              if (formData.dayCare.type === 'daily') {
+                dayCareInfoText = 'Daily Day Care';
+              } else if (formData.dayCare.type === 'longTerm') {
+                dayCareInfoText = `${formData.dayCare.days} Days Long-term Day Care`;
+              }
+            }
+            
             const customerTemplateParams = {
               to_name: formData.ownerName,
               to_email: formData.ownerEmail,
+              // 添加客户信息字段
+              customer_name: formData.ownerName,
+              customer_email: formData.ownerEmail,
+              customer_phone: formData.ownerPhone,
+              member_status: user ? 'Member' : 'Non-member',
+              // 预约详情字段
               appointment_date: new Date(formData.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
               appointment_time: formData.time,
-          pet_name: formData.petName,
+              pet_name: formData.petName,
               pet_type: formData.petType === 'dog' ? 'Dog' : 'Cat',
               service_type: serviceTypeName,
-              price: `RM ${totalPrice.toFixed(2)}`
+              total_price: totalPrice.toFixed(2),
+              price: `RM ${totalPrice.toFixed(2)}`,
+              day_care_info: dayCareInfoText,
+              // 店铺信息
+              shop_address: '123 Jalan ABC, Taman XYZ, 12345 Kuala Lumpur, Malaysia'
             };
+            
+            console.log('发送客户确认邮件，参数:', customerTemplateParams);
             
             // 发送邮件给客户
             await emailjs.send(
@@ -715,24 +737,30 @@ const GroomingAppointment: React.FC = () => {
             
             // 发送邮件给管理员
             const adminTemplateParams = {
-          customer_name: formData.ownerName,
-          customer_email: formData.ownerEmail,
-          customer_phone: formData.ownerPhone,
+              customer_name: formData.ownerName,
+              customer_email: formData.ownerEmail,
+              customer_phone: formData.ownerPhone,
+              member_status: user ? 'Member' : 'Non-member',
               appointment_date: new Date(formData.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
               appointment_time: formData.time,
               pet_name: formData.petName,
               pet_type: formData.petType === 'dog' ? 'Dog' : 'Cat',
               service_type: serviceTypeName,
+              total_price: totalPrice.toFixed(2),
               price: `RM ${totalPrice.toFixed(2)}`,
-              notes: formData.notes || 'No special notes'
+              day_care_info: dayCareInfoText,
+              notes: formData.notes || 'No special notes',
+              shop_address: '123 Jalan ABC, Taman XYZ, 12345 Kuala Lumpur, Malaysia'
             };
             
+            console.log('发送管理员通知邮件，参数:', adminTemplateParams);
+            
             await emailjs.send(
-          'service_krtn3d1',
+              'service_krtn3d1',
               'template_xq8hg1p',
               adminTemplateParams
-        );
-        
+            );
+            
             console.log('Emails sent successfully to customer and admin');
       } catch (emailError) {
             console.error('Failed to send emails:', emailError);
