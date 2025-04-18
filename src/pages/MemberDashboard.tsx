@@ -659,7 +659,7 @@ const MemberDashboard: React.FC = () => {
       </div>
 
       {/* 通知列表 */}
-      <div className="max-h-[calc(100vh-16rem)] overflow-y-auto">
+      <div className="max-h-[calc(3*5.5rem)] md:max-h-[calc(100vh-16rem)] overflow-y-auto">
         {notifications.length > 0 ? (
           notifications.map(notification => (
             <div
