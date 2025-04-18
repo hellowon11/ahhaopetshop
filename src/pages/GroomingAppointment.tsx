@@ -1546,8 +1546,15 @@ const GroomingAppointment: React.FC = () => {
                             min={new Date().toISOString().split('T')[0]}
                           value={formData.date}
                             onChange={(e) => {
+                              const selectedDate = new Date(e.target.value);
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              
                               setFormData({ ...formData, date: e.target.value, time: '' });
-                              if (e.target.value) {
+                              
+                              if (selectedDate < today) {
+                                setFormErrors({ ...formErrors, date: 'Please select today or a future date' });
+                              } else {
                                 setFormErrors({ ...formErrors, date: '' });
                               }
                             }}
