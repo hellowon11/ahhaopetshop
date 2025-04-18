@@ -96,6 +96,7 @@ const Login: React.FC = () => {
   const [tempUserId, setTempUserId] = useState('');
   const [resendDisabled, setResendDisabled] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
+  const [showEmailHint, setShowEmailHint] = useState(false);
   
   // 为每个验证码输入框创建 ref
   const digitRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -819,6 +820,7 @@ const Login: React.FC = () => {
                         required
                         value={name}
                         onChange={(e) => setName(e.target.value)}
+                        placeholder="Enter your name"
                         className="appearance-none block w-full px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-rose-500 focus:border-rose-500"
                       />
                     </div>
@@ -836,6 +838,7 @@ const Login: React.FC = () => {
                         required
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
+                        placeholder="Enter your phone number"
                         className="appearance-none block w-full px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-rose-500 focus:border-rose-500"
                       />
                     </div>
@@ -855,10 +858,33 @@ const Login: React.FC = () => {
                     autoComplete="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="appearance-none block w-full px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-rose-500 focus:border-rose-500"
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (e.target.value) {
+                        setShowEmailHint(true);
+                      }
+                      setError('');
+                    }}
+                    onFocus={() => {
+                      if (email) {
+                        setShowEmailHint(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      setShowEmailHint(false);
+                    }}
+                    placeholder="name@example.com"
+                    className={`appearance-none block w-full px-3 py-1.5 sm:py-2 border ${
+                      error && error.includes('email') ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-rose-500 focus:border-rose-500`}
                   />
                 </div>
+                {showEmailHint && email && (
+                  <p className="mt-1 text-sm text-red-600">Please enter a valid email address (e.g. name@example.com)</p>
+                )}
+                {error && error.includes('email') && (
+                  <p className="mt-1 text-sm text-red-600">{error}</p>
+                )}
               </div>
 
               <div>
