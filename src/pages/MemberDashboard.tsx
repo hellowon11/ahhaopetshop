@@ -957,7 +957,7 @@ const MemberDashboard: React.FC = () => {
             {/* Quick Actions Section */}
             <div className="bg-white rounded-xl shadow-sm p-4 sm:p-5">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Quick Actions</h3>
-              <div className="grid grid-cols-2 gap-3 h-[160px] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="grid grid-cols-2 gap-3 h-auto md:h-auto overflow-y-auto pr-2 custom-scrollbar">
                 <div 
                   onClick={() => navigate('/grooming-appointment')}
                   className="bg-gray-50 hover:bg-blue-50 rounded-xl p-2 sm:p-3 h-[70px] sm:h-[80px] cursor-pointer transition-colors flex items-center justify-center flex-col"
