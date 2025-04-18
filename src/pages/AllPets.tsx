@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Search, ZoomIn, X, Heart } from 'lucide-react';
+import { ArrowLeft, Search, ZoomIn, X, Heart, User } from 'lucide-react';
 import { shopPets } from '../services/api';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
@@ -281,13 +281,23 @@ const AllPets: React.FC = () => {
   return (
     <div className="py-16 bg-white min-h-screen">
       <div className="container mx-auto px-6">
-        <button
-          onClick={handleBack}
-          className="flex items-center gap-2 text-rose-600 hover:text-rose-700 transition-colors mb-8"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back
-        </button>
+        <div className="flex items-center justify-between mb-8">
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2 text-rose-600 hover:text-rose-700 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back
+          </button>
+          
+          {/* Mobile Member Icon */}
+          <button
+            onClick={() => navigate('/member-dashboard')}
+            className="md:hidden flex items-center gap-2 text-gray-600 hover:text-rose-600 transition-colors"
+          >
+            <User className="w-5 h-5" />
+          </button>
+        </div>
 
         <h1 className="text-4xl font-bold text-center text-gray-800 mb-8">
           AH HAO PET SHOP
