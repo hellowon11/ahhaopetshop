@@ -9,7 +9,7 @@ import { Appointment, TimeSlot as ApiTimeSlot } from '../types';
 import { convertToUTC, convertToMalaysiaTime } from '../utils/dateUtils';
 
 // Initialize EmailJS with your public key
-emailjs.init("5hA17zkuJrKTq5kny");
+emailjs.init("-aRgYaBSN6vwDOahT");
 
 // Define interfaces
 interface GroomingService {
@@ -730,8 +730,8 @@ const GroomingAppointment: React.FC = () => {
             
             // 发送邮件给客户
             await emailjs.send(
-          'service_krtn3d1',
-              'template_bfqf4z1',
+          'service_4awqr8x',
+              'template_uznkxfq',
               customerTemplateParams
             );
             
@@ -756,8 +756,8 @@ const GroomingAppointment: React.FC = () => {
             console.log('发送管理员通知邮件，参数:', adminTemplateParams);
             
             await emailjs.send(
-              'service_krtn3d1',
-              'template_xq8hg1p',
+              'service_4awqr8x',
+              'template_7cysc9f',
               adminTemplateParams
             );
             
