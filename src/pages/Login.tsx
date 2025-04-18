@@ -860,18 +860,28 @@ const Login: React.FC = () => {
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
-                      if (e.target.value) {
+                      // 验证邮箱格式
+                      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                      if (e.target.value && !emailRegex.test(e.target.value)) {
                         setShowEmailHint(true);
+                      } else {
+                        setShowEmailHint(false);
                       }
                       setError('');
                     }}
                     onFocus={() => {
                       if (email) {
-                        setShowEmailHint(true);
+                        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                        setShowEmailHint(!emailRegex.test(email));
                       }
                     }}
                     onBlur={() => {
-                      setShowEmailHint(false);
+                      if (email) {
+                        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                        setShowEmailHint(!emailRegex.test(email));
+                      } else {
+                        setShowEmailHint(false);
+                      }
                     }}
                     placeholder="name@example.com"
                     className={`appearance-none block w-full px-3 py-1.5 sm:py-2 border ${
