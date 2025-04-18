@@ -349,7 +349,7 @@ const MainApp: React.FC = () => {
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setEmailError('Please enter a valid email address');
+      setEmailError('Please enter a valid email address (e.g. name@example.com)');
     } else {
       setEmailError('');
     }
