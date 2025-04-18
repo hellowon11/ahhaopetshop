@@ -78,6 +78,28 @@ const getAppointmentTimestamp = (appointment: Appointment): number => {
   return 0;
 };
 
+// 定义服务和日托选项类型
+interface GroomingService {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  displayPrice?: string;
+  duration: number;
+  displayDuration?: string;
+  features: Array<{ text: string }>;
+  discount: number;
+  recommended?: boolean;
+  capacityLimit?: number;
+}
+
+interface DayCareOption {
+  type: string;
+  price: number;
+  displayPrice?: string;
+  description: string;
+}
+
 const MemberDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const { setReturningFromDashboard } = useNavigation();
@@ -101,6 +123,8 @@ const MemberDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [expandedPriceDetails, setExpandedPriceDetails] = useState<Record<string, boolean>>({});
+  const [services, setServices] = useState<GroomingService[]>([]);
+  const [dayCareOptions, setDayCareOptions] = useState<DayCareOption[]>([]);
   
   // 加载用户数据
   useEffect(() => {
@@ -111,6 +135,23 @@ const MemberDashboard: React.FC = () => {
         setLoading(true);
         setError(null);
 
+        // 获取服务价格和日托选项
+        try {
+          console.log('正在获取美容服务价格数据...');
+          const servicesData = await apiService.services.getGroomingServices() as GroomingService[];
+          console.log('成功获取美容服务数据:', servicesData);
+          console.log('各服务ID和名称:', servicesData.map(s => `ID:${s.id}, 名称:${s.name}, 价格:${s.price}, 折扣:${s.discount}%`).join('\n'));
+          setServices(servicesData);
+
+          console.log('正在获取日托选项数据...');
+          const dayCareData = await apiService.services.getDayCareOptions() as DayCareOption[];
+          console.log('成功获取日托选项数据:', dayCareData);
+          setDayCareOptions(dayCareData);
+        } catch (priceError) {
+          console.error('获取价格数据失败:', priceError);
+          // 即使获取价格失败，也继续加载其他数据
+        }
+
         // 获取宠物列表
         const petsData = await apiService.pets.getAll();
         setPets(petsData);
@@ -119,8 +160,14 @@ const MemberDashboard: React.FC = () => {
         const appointmentsData = await apiService.appointments.getAll();
         console.log('Loaded appointments:', appointmentsData.length);
         
-        // 确保预约按时间正确排序
-        const sortedAppointments = appointmentsData.sort((a, b) => {
+        // 确保预约按时间正确排序并保留原始价格
+        const sortedAppointments = appointmentsData
+          .map(appointment => ({
+            ...appointment,
+            // 确保totalPrice是数字
+            totalPrice: appointment.totalPrice ? Number(appointment.totalPrice) : undefined
+          }))
+          .sort((a, b) => {
           const dateA = new Date(`${a.date}T${a.time}`);
           const dateB = new Date(`${b.date}T${b.time}`);
           return dateA.getTime() - dateB.getTime();
@@ -135,7 +182,13 @@ const MemberDashboard: React.FC = () => {
           if (historyData && historyData.length > 0) {
             // 将历史记录合并到预约中，但避免重复
             const existingIds = sortedAppointments.map(a => a._id);
-            const newHistoryAppointments = historyData.filter(a => !existingIds.includes(a._id));
+            const newHistoryAppointments = historyData
+              .filter(a => !existingIds.includes(a._id))
+              .map(appointment => ({
+                ...appointment,
+                // 确保totalPrice是数字
+                totalPrice: appointment.totalPrice ? Number(appointment.totalPrice) : undefined
+              }));
             setAppointments([...sortedAppointments, ...newHistoryAppointments]);
           }
         } catch (historyError) {
@@ -283,44 +336,294 @@ const MemberDashboard: React.FC = () => {
     }
   };
 
-  // Calculate base price of service
+  // 将服务类型名称转换为后端服务ID
+  const getServiceIdFromName = (serviceType: string): string => {
+    let serviceId = '';
+    console.log(`服务名称映射开始: "${serviceType}"`);
+    
+    if (serviceType === 'Basic Grooming') {
+      serviceId = 'basic';
+      console.log('映射为: basic');
+    }
+    else if (serviceType === 'Premium Grooming') {
+      serviceId = 'Premium'; // 更新为正确的ID
+      console.log('映射为: Premium');
+    }
+    else if (serviceType === 'Full Grooming') {
+      serviceId = 'full';
+      console.log('映射为: full');
+    }
+    else if (serviceType === 'Spa Treatment') {
+      serviceId = 'spa';
+      console.log('映射为: spa');
+    }
+    else {
+      console.warn(`未识别的服务类型: "${serviceType}", 尝试直接小写作为ID`);
+      serviceId = serviceType.toLowerCase().replace(/\s+/g, '-');
+    }
+    
+    console.log(`服务名称映射结果: "${serviceType}" -> "${serviceId}"`);
+    return serviceId;
+  };
+
+  // 从服务ID获取美容服务
+  const getServiceById = (serviceId: string): GroomingService | undefined => {
+    if (!services || services.length === 0) {
+      console.warn(`无法获取ID为"${serviceId}"的服务: 服务数据未加载`);
+      return undefined;
+    }
+    
+    console.log(`尝试查找服务ID: "${serviceId}"`, services.map(s => `${s.id}(${s.name})`).join(', '));
+    const service = services.find(s => s.id === serviceId);
+    
+    if (!service) {
+      console.warn(`未找到ID为"${serviceId}"的服务`);
+    } else {
+      console.log(`找到服务: ID=${service.id}, 名称=${service.name}, 价格=${service.price}, 折扣=${service.discount}%`);
+    }
+    
+    return service;
+  };
+
+  // 获取服务对象，先从名称转换为ID，再根据ID获取服务
+  const getServiceByName = (serviceType: string): GroomingService | undefined => {
+    console.log(`通过名称获取服务: "${serviceType}"`);
+    const serviceId = getServiceIdFromName(serviceType);
+    
+    if (!serviceId) {
+      console.warn(`无法为"${serviceType}"获取服务ID`);
+      return undefined;
+    }
+    
+    // 获取服务
+    const service = getServiceById(serviceId);
+    
+    // 检查是否找到服务，如果没找到，尝试直接匹配名称
+    if (!service) {
+      console.log(`通过ID "${serviceId}" 未找到服务，尝试直接匹配名称...`);
+      const serviceByName = services.find(s => s.name === serviceType);
+      if (serviceByName) {
+        console.log(`通过名称找到服务: ID=${serviceByName.id}, 名称=${serviceByName.name}`);
+        return serviceByName;
+      }
+    }
+    
+    console.log(`获取服务结果:`, service ? 
+      `成功 (ID=${service.id}, 名称=${service.name}, 折扣=${service.discount}%)` : 
+      '失败');
+    
+    return service;
+  };
+
+  // 获取服务显示名称 - 优先使用API数据
+  const getServiceDisplayName = (serviceType: string): string => {
+    const service = getServiceByName(serviceType);
+    
+    if (service) {
+      console.log(`显示服务名称: "${serviceType}" -> "${service.name}"`);
+      return service.name;
+    }
+    
+    // 后备逻辑，如果无法从API获取数据
+    if (serviceType === 'Full Grooming') {
+      console.log('应用后备逻辑: Full Grooming -> Premium Grooming');
+      return 'Premium Grooming';
+    }
+    
+    return serviceType;
+  };
+
+  // 查找服务的通用函数，包含多种查询策略
+  const findService = (serviceType: string): GroomingService | undefined => {
+    // 先通过ID查找
+    const serviceId = getServiceIdFromName(serviceType);
+    let service = services.find(s => s.id === serviceId);
+    
+    // 如果找不到，尝试通过名称匹配
+    if (!service) {
+      service = services.find(s => s.name === serviceType);
+    }
+    
+    // 如果还找不到，对于Premium/Full Grooming特殊处理
+    if (!service && (serviceType === 'Premium Grooming' || serviceType === 'Full Grooming')) {
+      // 尝试查找任何包含Premium或Full的服务
+      service = services.find(s => 
+        s.name.includes('Premium') || 
+        s.name.includes('Full') || 
+        s.id === 'Premium' || 
+        s.id === 'full' || 
+        s.id === 'premium'
+      );
+    }
+    
+    if (service) {
+      console.log(`找到服务 "${serviceType}": ID=${service.id}, 名称=${service.name}, 价格=${service.price}, 折扣=${service.discount}%`);
+    } else {
+      console.warn(`无法找到服务 "${serviceType}", 已尝试所有查找策略`);
+    }
+    
+    return service;
+  };
+
+  // 计算基本价格 - 完全基于API数据
   const calculateBasePrice = (serviceType: string): number => {
+    // 使用增强的服务查找逻辑
+    const service = findService(serviceType);
+    
+    if (service) {
+      console.log(`服务${serviceType}的基础价格(从API): RM${service.price}`);
+      return service.price;
+    }
+    
+    // 后备逻辑，只在API获取失败时使用
+    let fallbackPrice = 0;
+    
     switch (serviceType) {
       case 'Basic Grooming':
-        return 60;
+        fallbackPrice = 70;
+        break;
+      case 'Premium Grooming':
       case 'Full Grooming':
-        return 120;
+        fallbackPrice = 140;
+        break;
       case 'Spa Treatment':
-        return 220;
+        fallbackPrice = 220;
+        break;
       default:
-        return 0;
+        fallbackPrice = 0;
     }
+    
+    console.warn(`无法从API获取${serviceType}价格，使用后备价格: RM${fallbackPrice}`);
+    return fallbackPrice;
   };
 
-  // Calculate day care price
-  const calculateDayCarePrice = (dayCareOptions?: { type: 'daily' | 'longTerm'; days: number }): number => {
-    if (!dayCareOptions || !dayCareOptions.type) return 0;
+  // 计算日托价格 - 完全基于API数据
+  const calculateDayCarePrice = (options?: { type: 'daily' | 'longTerm'; days: number }): number => {
+    if (!options || !options.type) return 0;
     
-    if (dayCareOptions.type === 'daily') return 50;
-    return dayCareOptions.days * 80; // Long term price
+    if (dayCareOptions && dayCareOptions.length > 0) {
+      const option = dayCareOptions.find(o => o.type === options.type);
+      
+      if (option) {
+        let price = 0;
+        
+        if (options.type === 'daily') {
+          price = option.price;
+          console.log(`日托价格(daily): RM${price}`);
+        } else {
+          price = options.days * option.price;
+          console.log(`日托价格(longTerm): ${options.days}天, 每天RM${option.price}, 总价RM${price}`);
+        }
+        
+        return price;
+      }
+    }
+    
+    // 后备逻辑
+    let price = 0;
+    
+    if (options.type === 'daily') {
+      price = 50;
+    } else {
+      price = options.days * 80;
+    }
+    
+    console.warn(`无法从API获取日托价格，使用后备价格: ${options.type}, RM${price}`);
+    return price;
   };
 
-  // Calculate total price
-  const calculateTotalPrice = (serviceType: string, dayCareOptions?: { type: 'daily' | 'longTerm'; days: number }): number => {
-    let total = calculateBasePrice(serviceType);
+  // 计算会员折扣额 - 完全基于API数据
+  const calculateDiscountAmount = (serviceType: string): number => {
+    console.log(`开始计算折扣金额: "${serviceType}"`);
     
-    // Add day care cost
-    const dayCarePrice = calculateDayCarePrice(dayCareOptions);
-    total += dayCarePrice;
+    // 使用增强的服务查找逻辑
+    const service = findService(serviceType);
     
-    // Apply member discounts
-    if (serviceType === 'Spa Treatment') {
-      total = total * 0.9; // 10% discount for spa
-    } else if (serviceType === 'Basic Grooming' || serviceType === 'Full Grooming') {
-      total = total * 0.92; // 8% discount for basic and full grooming
+    if (!service) {
+      console.warn(`找不到服务数据，无法计算折扣: ${serviceType}`);
+      return 0;
     }
+    
+    // 获取基础价格和折扣率
+    const basePrice = service.price;
+    const discountRate = service.discount;
+    
+    // 如果服务有折扣，计算折扣金额
+    if (discountRate > 0) {
+      // 确保折扣率为正数，并且正确应用折扣计算公式
+      const validDiscountRate = Math.max(0, Math.min(100, discountRate));
+      const discountAmount = basePrice * (validDiscountRate / 100);
+      
+      console.log(`服务"${serviceType}"(${service.id})的折扣计算详情:`, {
+        serviceId: service.id,
+        basePrice: `RM${basePrice}`,
+        discountRate: `${validDiscountRate}%`,
+        discountAmount: `RM${discountAmount.toFixed(2)}`
+      });
+      
+      // 四舍五入到两位小数
+      return Math.round(discountAmount * 100) / 100;
+    }
+    
+    console.log(`服务"${serviceType}"(${service.id})无折扣，折扣率:${discountRate}%`);
+    return 0;
+  };
 
-    return Math.round(total * 100) / 100; // Round to 2 decimal places
+  // 计算总价 - 完全基于API数据
+  const calculateTotalPrice = (serviceType: string, options?: { type: 'daily' | 'longTerm'; days: number }): number => {
+    console.log(`开始计算总价: "${serviceType}"`);
+    // 获取服务对象 - 使用增强的服务查找逻辑
+    const service = findService(serviceType);
+    
+    if (!service) {
+      console.warn(`找不到服务数据，使用后备计算: ${serviceType}`);
+      // 使用后备逻辑，调用另外两个函数
+      const basePrice = calculateBasePrice(serviceType);
+      const dayCarePrice = calculateDayCarePrice(options);
+      return Math.round((basePrice + dayCarePrice) * 100) / 100;
+    }
+    
+    // 从API获取基础价格和折扣率
+    const basePrice = service.price;
+    const discountRate = service.discount || 0;
+    
+    // 获取日托价格
+    const dayCarePrice = calculateDayCarePrice(options);
+    
+    // 计算总价 - 注意：只对美容服务应用折扣，日托服务不享受折扣
+    let totalPrice = basePrice + dayCarePrice;
+    let discountAmount = 0;
+    
+    if (discountRate > 0) {
+      // 确保折扣率为正数，并且正确应用折扣计算公式
+      const validDiscountRate = Math.max(0, Math.min(100, discountRate));
+      
+      // 计算折扣金额 - 只针对美容服务，不包括日托
+      discountAmount = basePrice * (validDiscountRate / 100);
+      
+      // 更新总价 = 基础价格 - 折扣金额 + 日托价格
+      totalPrice = (basePrice - discountAmount) + dayCarePrice;
+      
+      console.log(`总价计算详情: ${serviceType}`, {
+        serviceId: service.id,
+        basePrice: `RM${basePrice}`,
+        discount: `${validDiscountRate}%`,
+        discountAmount: `RM${discountAmount.toFixed(2)}`,
+        discountedServicePrice: `RM${(basePrice - discountAmount).toFixed(2)}`,
+        dayCarePrice: `RM${dayCarePrice.toFixed(2)}`,
+        totalPrice: `RM${totalPrice.toFixed(2)}`
+      });
+    } else {
+      console.log(`总价计算(无折扣): ${serviceType}`, {
+        serviceId: service.id,
+        basePrice: `RM${basePrice}`,
+        dayCarePrice: `RM${dayCarePrice.toFixed(2)}`,
+        totalPrice: `RM${totalPrice.toFixed(2)}`
+      });
+    }
+    
+    // 四舍五入到两位小数
+    return Math.round(totalPrice * 100) / 100;
   };
 
   // Toggle price details dropdown
@@ -674,7 +977,7 @@ const MemberDashboard: React.FC = () => {
                 } else {
                   // 标记任何通知为已读
                   if (!notification.isRead) {
-                    handleMarkNotificationAsRead(notification._id);
+                  handleMarkNotificationAsRead(notification._id);
                   }
                   // Add other notification click handling logic here, such as navigation
                   console.log('Notification clicked:', notification.title);
@@ -711,8 +1014,8 @@ const MemberDashboard: React.FC = () => {
                   <div className="flex-grow">
                     <div className="flex justify-between items-start">
                       <p className="text-xs md:text-sm font-medium text-gray-900">
-                        {notification.title}
-                      </p>
+                      {notification.title}
+                    </p>
                       {notification.isRead && (
                         <span className="text-xs text-blue-500 ml-2 flex items-center">
                           <CheckCircle className="w-3 h-3 mr-1" />
@@ -987,7 +1290,7 @@ const MemberDashboard: React.FC = () => {
                   <Scissors className="w-5 h-5 text-purple-600 mb-1 sm:mb-2" />
                   <span className="text-xs sm:text-sm font-medium text-gray-800">Grooming History</span>
                 </div>
-
+                
                 <div 
                   onClick={() => navigate('/all-pets')}
                   className="bg-gray-50 hover:bg-amber-50 rounded-xl p-2 sm:p-3 h-[70px] sm:h-[80px] cursor-pointer transition-colors flex items-center justify-center flex-col"
@@ -1070,7 +1373,7 @@ const MemberDashboard: React.FC = () => {
                             
                             {/* Service Type */}
                             <div className="text-sm text-gray-800 mb-1">
-                              {appointment.serviceType}
+                              {getServiceDisplayName(appointment.serviceType || 'Basic Grooming')}
                             </div>
                             
                             {/* Date and Time - 使用12小时格式 */}
@@ -1096,8 +1399,39 @@ const MemberDashboard: React.FC = () => {
                             <div className="mt-2 relative">
                               <div className="flex items-center">
                                 <span className="text-sm font-medium text-gray-900">
-                                  RM {appointment.totalPrice ? Number(appointment.totalPrice).toFixed(2) : 
-                                  calculateTotalPrice(appointment.serviceType || 'Basic Grooming', appointment.dayCareOptions).toFixed(2)}
+                                  RM {(() => {
+                                    // 获取服务信息
+                                    const serviceName = getServiceDisplayName(appointment.serviceType || 'Basic Grooming');
+                                    const service = findService(serviceName);
+                                    
+                                    if (!service) {
+                                      console.warn(`找不到服务信息: ${serviceName}`);
+                                      return calculateTotalPrice(serviceName, appointment.dayCareOptions).toFixed(2);
+                                    }
+                                    
+                                    // 计算基础价格、折扣和日托价格
+                                    const basePrice = service.price;
+                                    const discountRate = service.discount || 0;
+                                    const dayCarePrice = calculateDayCarePrice(appointment.dayCareOptions);
+                                    
+                                    // 计算折扣金额和总价
+                                    const discountAmount = discountRate > 0 ? basePrice * (discountRate / 100) : 0;
+                                    const totalPrice = (basePrice - discountAmount) + dayCarePrice;
+                                    
+                                    console.log(`卡片价格计算 - ${serviceName}:`, {
+                                      serviceId: service.id,
+                                      basePrice: `RM${basePrice.toFixed(2)}`,
+                                      discountRate: `${discountRate}%`,
+                                      discountAmount: `RM${discountAmount.toFixed(2)}`,
+                                      dayCarePrice: `RM${dayCarePrice.toFixed(2)}`,
+                                      totalPrice: `RM${totalPrice.toFixed(2)}`
+                                    });
+                                    
+                                    // 四舍五入到两位小数并返回
+                                    return Math.round(totalPrice * 100) / 100 === 0 ? 
+                                      calculateTotalPrice(serviceName, appointment.dayCareOptions).toFixed(2) : 
+                                      (Math.round(totalPrice * 100) / 100).toFixed(2);
+                                  })()}
                                 </span>
                                 <button 
                                   type="button"
@@ -1119,13 +1453,29 @@ const MemberDashboard: React.FC = () => {
                                 </button>
                               </div>
                               
+                              {/* 价格详情调试日志 */}
+                              {expandedPriceDetails[appointment._id || ''] && (() => {
+                                const serviceName = getServiceDisplayName(appointment.serviceType || 'Basic Grooming');
+                                const service = findService(serviceName);
+                                console.log(`展开价格详情 - ${appointment._id}:`, {
+                                  serviceType: serviceName,
+                                  serviceId: service?.id || 'not found',
+                                  服务列表: services.map(s => `${s.id}:${s.name}:${s.discount}%:${s.price}`).join(', '),
+                                  service: service ? `找到(ID:${service.id}, 名称:${service.name}, 价格:${service.price}, 折扣:${service.discount}%)` : '未找到',
+                                  dayCareOptions: appointment.dayCareOptions,
+                                  dayCarePrice: appointment.dayCareOptions ? calculateDayCarePrice(appointment.dayCareOptions) : 0,
+                                  totalPrice: calculateTotalPrice(serviceName, appointment.dayCareOptions)
+                                });
+                                return null;
+                              })()}
+                              
                               {/* Price Details Dropdown */}
                               {expandedPriceDetails[appointment._id || ''] && (
                                 <div className="mb-2 bg-white rounded-md shadow-sm border border-gray-200 p-2 space-y-1 absolute z-10 right-0 bottom-full w-48 price-details-dropdown">
                                   <div className="flex justify-between text-xs">
                                     <span className="text-gray-600">Service:</span>
                                     <span className="text-gray-800">
-                                      RM {calculateBasePrice(appointment.serviceType || 'Basic Grooming')}
+                                      RM {calculateBasePrice(getServiceDisplayName(appointment.serviceType || 'Basic Grooming')).toFixed(2)}
                                     </span>
                                   </div>
                                   
@@ -1138,29 +1488,81 @@ const MemberDashboard: React.FC = () => {
                                         Day Care:
                                       </span>
                                       <span className="text-gray-800">
-                                        RM {calculateDayCarePrice(appointment.dayCareOptions)}
+                                        RM {calculateDayCarePrice(appointment.dayCareOptions).toFixed(2)}
                                       </span>
                                     </div>
                                   )}
                                   
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-gray-600">
-                                      Member Discount:
-                                    </span>
-                                    <span className="text-rose-600">
-                                      -RM {(
-                                        (calculateBasePrice(appointment.serviceType || 'Basic Grooming') + 
-                                         calculateDayCarePrice(appointment.dayCareOptions || { type: 'daily', days: 0 }) - 
-                                         (appointment.totalPrice || calculateTotalPrice(appointment.serviceType || 'Basic Grooming', appointment.dayCareOptions || { type: 'daily', days: 0 })))
-                                      ).toFixed(2)}
-                                    </span>
-                                  </div>
+                                  {/* 会员折扣信息 - 始终显示美容服务折扣信息，保持对齐 */}
+                                  {(() => {
+                                    // 获取服务信息
+                                    const serviceName = getServiceDisplayName(appointment.serviceType || 'Basic Grooming');
+                                    const service = findService(serviceName);
+                                    
+                                    // 如果找不到服务或没有折扣，不显示折扣信息
+                                    if (!service || service.discount <= 0) {
+                                      console.log(`${serviceName}无折扣信息或折扣率为0`);
+                                      return null;
+                                    }
+                                    
+                                    // 计算折扣金额
+                                    const basePrice = service.price;
+                                    const discountAmount = basePrice * (service.discount / 100);
+                                    
+                                    console.log(`折扣显示 - ${serviceName}:`, {
+                                      basePrice: `RM${basePrice.toFixed(2)}`,
+                                      discountRate: `${service.discount}%`,
+                                      discountAmount: `RM${discountAmount.toFixed(2)}`
+                                    });
+                                    
+                                    return (
+                                      <div className="flex justify-between items-center text-xs">
+                                        <span className="text-gray-600 whitespace-nowrap">
+                                          Member Discount:
+                                        </span>
+                                        <span className="text-rose-600 pl-1 whitespace-nowrap">
+                                          -RM {discountAmount.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    );
+                                  })()}
                                   
                                   <div className="flex justify-between text-xs font-medium pt-1 border-t border-gray-100">
                                     <span className="text-gray-800">Total:</span>
                                     <span className="text-gray-900 font-bold">
-                                      RM {appointment.totalPrice ? Number(appointment.totalPrice).toFixed(2) : 
-                                      calculateTotalPrice(appointment.serviceType || 'Basic Grooming', appointment.dayCareOptions || { type: 'daily', days: 0 }).toFixed(2)}
+                                      RM {(() => {
+                                        // 获取服务信息
+                                        const serviceName = getServiceDisplayName(appointment.serviceType || 'Basic Grooming');
+                                        const service = findService(serviceName);
+                                        
+                                        if (!service) {
+                                          console.warn(`找不到服务信息: ${serviceName}`);
+                                          return calculateTotalPrice(serviceName, appointment.dayCareOptions).toFixed(2);
+                                        }
+                                        
+                                        // 计算基础价格、折扣和日托价格
+                                        const basePrice = service.price;
+                                        const discountRate = service.discount || 0;
+                                        const dayCarePrice = calculateDayCarePrice(appointment.dayCareOptions);
+                                        
+                                        // 计算折扣金额和总价
+                                        const discountAmount = discountRate > 0 ? basePrice * (discountRate / 100) : 0;
+                                        const totalPrice = (basePrice - discountAmount) + dayCarePrice;
+                                        
+                                        console.log(`总价计算 - ${serviceName}:`, {
+                                          serviceId: service.id,
+                                          basePrice: `RM${basePrice.toFixed(2)}`,
+                                          discountRate: `${discountRate}%`,
+                                          discountAmount: `RM${discountAmount.toFixed(2)}`,
+                                          dayCarePrice: `RM${dayCarePrice.toFixed(2)}`,
+                                          totalPrice: `RM${totalPrice.toFixed(2)}`
+                                        });
+                                        
+                                        // 四舍五入到两位小数
+                                        return Math.round(totalPrice * 100) / 100 === 0 ? 
+                                          calculateTotalPrice(serviceName, appointment.dayCareOptions).toFixed(2) : 
+                                          (Math.round(totalPrice * 100) / 100).toFixed(2);
+                                      })()}
                                     </span>
                                   </div>
                                 </div>
