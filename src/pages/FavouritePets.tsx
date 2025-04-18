@@ -72,9 +72,10 @@ const FavouritePets: React.FC = () => {
               <ArrowLeft className="w-6 h-6" />
             </button>
             
-            {/* 标题：桌面端居中显示，移动端靠右显示 */}
-            <h1 className="text-xl font-semibold text-gray-900 absolute left-1/2 transform -translate-x-1/2 hidden md:block">My Favourite Pets</h1>
-            <h1 className="text-xl font-semibold text-gray-900 md:hidden">My Favourite Pets</h1>
+            <h1 className="absolute left-1/2 transform -translate-x-1/2 text-xl font-semibold text-gray-900">My Favourite Pets</h1>
+            
+            {/* Empty div to balance the layout */}
+            <div className="w-6"></div>
           </div>
         </div>
       </div>
