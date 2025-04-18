@@ -719,7 +719,11 @@ const GroomingAppointment: React.FC = () => {
               pet_name: formData.petName,
               pet_type: formData.petType === 'dog' ? 'Dog' : 'Cat',
               service_type: serviceTypeName,
-              total_price: totalPrice.toFixed(2),
+              // 价格明细
+              grooming_price: `RM ${calculateBasePrice(formData.serviceType).toFixed(2)}`,
+              daycare_price: formData.dayCare.enabled ? `RM ${calculateDayCarePrice(formData.dayCare).toFixed(2)}` : 'Not selected',
+              member_discount: discount > 0 ? `RM ${discount.toFixed(2)}` : 'No discount',
+              total_price: `RM ${totalPrice.toFixed(2)}`,
               price: `RM ${totalPrice.toFixed(2)}`,
               day_care_info: dayCareInfoText,
               // 店铺信息
@@ -746,7 +750,11 @@ const GroomingAppointment: React.FC = () => {
               pet_name: formData.petName,
               pet_type: formData.petType === 'dog' ? 'Dog' : 'Cat',
               service_type: serviceTypeName,
-              total_price: totalPrice.toFixed(2),
+              // 价格明细
+              grooming_price: `RM ${calculateBasePrice(formData.serviceType).toFixed(2)}`,
+              daycare_price: formData.dayCare.enabled ? `RM ${calculateDayCarePrice(formData.dayCare).toFixed(2)}` : 'Not selected',
+              member_discount: discount > 0 ? `RM ${discount.toFixed(2)}` : 'No discount',
+              total_price: `RM ${totalPrice.toFixed(2)}`,
               price: `RM ${totalPrice.toFixed(2)}`,
               day_care_info: dayCareInfoText,
               notes: formData.notes || 'No special notes',
