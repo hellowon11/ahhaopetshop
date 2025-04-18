@@ -8,7 +8,7 @@ import Navigation from './Navigation';
 import AuthButtons from './AuthButtons';
 import ChatDogHouse from './ChatDogHouse';
 
-const address = "No.2, Jalan Persiaran Seksyen 1/3, Bandar Teknologi Kajang, 43500 Semenyih, Selangor";
+const address = "2, Persiaran Jalil 8, Bukit Jalil, 57000 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur (Pavilion Bukit Jalil)";
 
 const MainApp: React.FC = () => {
   const { user } = useAuth();
