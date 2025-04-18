@@ -546,7 +546,7 @@ const AppointmentManagement: React.FC = () => {
       {/* 顶部导航栏 */}
       <div className="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
         <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between md:justify-between">
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => navigate('/member-dashboard')}
@@ -556,10 +556,10 @@ const AppointmentManagement: React.FC = () => {
                 <ArrowLeft className="w-6 h-6" />
               </button>
             </div>
-            <h1 className="text-xl font-bold text-gray-800">
+            <h1 className="absolute left-1/2 transform -translate-x-1/2 md:static md:transform-none text-xl font-bold text-gray-800">
               Appointment History
             </h1>
-            <div className="w-32">
+            <div className="w-6 md:w-32">
               {/* 这个空的 div 用来平衡布局 */}
             </div>
           </div>

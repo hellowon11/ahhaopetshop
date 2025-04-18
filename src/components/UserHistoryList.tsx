@@ -20,13 +20,14 @@ const getAppointmentDateTime = (appointment: Appointment): Date => {
 // 格式化日期时间显示为12小时制
 const formatDateTime = (appointment: Appointment): string => {
   const date = getAppointmentDateTime(appointment);
-  return date.toLocaleString('en-US', {
+  return date.toLocaleString('en-MY', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true
+    hour12: true,
+    timeZone: 'Asia/Kuala_Lumpur'
   });
 };
 
