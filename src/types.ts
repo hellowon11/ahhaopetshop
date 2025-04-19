@@ -32,7 +32,8 @@ export interface Appointment {
   date: string | Date;
   time: string;
   utcDateTime?: Date;
-  serviceType: 'Basic Grooming' | 'Full Grooming' | 'Spa Treatment';
+  serviceType: 'Basic Grooming' | 'Premium Grooming' | 'Spa Treatment' | 'Full Grooming';
+  serviceId: string;
   duration: number;
   dayCareOptions?: {
     type: 'daily' | 'longTerm';
@@ -66,4 +67,32 @@ export interface Notification {
 export interface TimeSlot {
   time: string;
   available: boolean;
+}
+
+export interface TimeSlotWithBookings extends TimeSlot {
+  currentBookings: number;
+}
+
+export interface DayCareOption {
+  _id: string;
+  type: 'daily' | 'longTerm';
+  price: number;
+  displayPrice?: string;
+  description: string;
+  capacityLimit?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface GroomingService {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  displayPrice: string;
+  duration: number;
+  displayDuration: string;
+  features: string[];
+  discount: number;
+  recommended: boolean;
 } 

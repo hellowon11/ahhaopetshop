@@ -338,32 +338,27 @@ const MemberDashboard: React.FC = () => {
 
   // 将服务类型名称转换为后端服务ID
   const getServiceIdFromName = (serviceType: string): string => {
-    let serviceId = '';
-    console.log(`服务名称映射开始: "${serviceType}"`);
+    console.log(`开始查找服务ID，服务名称: "${serviceType}"`);
     
-    if (serviceType === 'Basic Grooming') {
-      serviceId = 'basic';
-      console.log('映射为: basic');
-    }
-    else if (serviceType === 'Premium Grooming') {
-      serviceId = 'Premium'; // 更新为正确的ID
-      console.log('映射为: Premium');
-    }
-    else if (serviceType === 'Full Grooming') {
-      serviceId = 'full';
-      console.log('映射为: full');
-    }
-    else if (serviceType === 'Spa Treatment') {
-      serviceId = 'spa';
-      console.log('映射为: spa');
-    }
-    else {
-      console.warn(`未识别的服务类型: "${serviceType}", 尝试直接小写作为ID`);
-      serviceId = serviceType.toLowerCase().replace(/\s+/g, '-');
+    // 直接从 services 数组中查找匹配的服务
+    const service = services.find(s => s.name === serviceType);
+    if (service) {
+      console.log(`找到服务: ID=${service.id}, 名称=${service.name}, 价格=${service.price}, 折扣=${service.discount}%`);
+      return service.id;
     }
     
-    console.log(`服务名称映射结果: "${serviceType}" -> "${serviceId}"`);
-    return serviceId;
+    // 如果没有直接匹配，尝试特殊情况处理
+    if (serviceType === 'Full Grooming') {
+      // 查找 Premium Grooming 服务
+      const premiumService = services.find(s => s.name === 'Premium Grooming');
+      if (premiumService) {
+        console.log(`Full Grooming 映射到 Premium Grooming: ID=${premiumService.id}`);
+        return premiumService.id;
+      }
+    }
+    
+    console.warn(`未找到服务"${serviceType}"的ID`);
+    return '';
   };
 
   // 从服务ID获取美容服务
@@ -499,36 +494,31 @@ const MemberDashboard: React.FC = () => {
 
   // 计算日托价格 - 完全基于API数据
   const calculateDayCarePrice = (options?: { type: 'daily' | 'longTerm'; days: number }): number => {
-    if (!options || !options.type) return 0;
-    
-    if (dayCareOptions && dayCareOptions.length > 0) {
-      const option = dayCareOptions.find(o => o.type === options.type);
-      
-      if (option) {
-        let price = 0;
-        
-        if (options.type === 'daily') {
-          price = option.price;
-          console.log(`日托价格(daily): RM${price}`);
-        } else {
-          price = options.days * option.price;
-          console.log(`日托价格(longTerm): ${options.days}天, 每天RM${option.price}, 总价RM${price}`);
-        }
-        
-        return price;
-      }
+    if (!options || !options.type) {
+      console.log('No daycare options provided');
+        return 0;
     }
     
-    // 后备逻辑
+    if (!dayCareOptions || dayCareOptions.length === 0) {
+      console.warn('No daycare options available from API');
+      return 0;
+    }
+    
+    const option = dayCareOptions.find(o => o.type === options.type);
+    if (!option) {
+      console.warn(`Daycare option not found for type: ${options.type}`);
+      return 0;
+    }
+    
     let price = 0;
-    
     if (options.type === 'daily') {
-      price = 50;
+      price = option.price;
+      console.log(`Daily daycare price from API: RM${price}`);
     } else {
-      price = options.days * 80;
+      price = options.days * option.price;
+      console.log(`Long-term daycare price from API: ${options.days} days * RM${option.price} = RM${price}`);
     }
     
-    console.warn(`无法从API获取日托价格，使用后备价格: ${options.type}, RM${price}`);
     return price;
   };
 
@@ -815,13 +805,76 @@ const MemberDashboard: React.FC = () => {
   // Handle appointment update
   const handleUpdateAppointment = async (id: string, appointmentData: Partial<Appointment>) => {
     try {
+      console.log('更新预约数据:', appointmentData);
+
+      // 如果更新包含服务类型，确保使用正确的服务ID
+      if (appointmentData.serviceType) {
+        const serviceId = getServiceIdFromName(appointmentData.serviceType);
+        if (!serviceId) {
+          throw new Error(`无法找到服务"${appointmentData.serviceType}"的ID`);
+        }
+        
+        // 获取服务信息
+        const service = getServiceById(serviceId);
+        if (!service) {
+          throw new Error(`无法找到ID为"${serviceId}"的服务信息`);
+        }
+
+        // 创建完整的更新数据
+        const updateData: Partial<Appointment> & {
+          serviceId: string;
+          serviceType: 'Basic Grooming' | 'Premium Grooming' | 'Spa Treatment';
+          duration: number;
+          totalPrice: number;
+          basePrice: number;
+          discount?: number;
+          dayCarePrice?: number;
+        } = {
+          ...appointmentData,
+          serviceId,
+          serviceType: service.name as 'Basic Grooming' | 'Premium Grooming' | 'Spa Treatment',
+          duration: service.duration,
+          basePrice: service.price,
+          totalPrice: service.price
+        };
+
+        // 计算日托价格
+        if (appointmentData.dayCareOptions) {
+          const dayCarePrice = calculateDayCarePrice(appointmentData.dayCareOptions);
+          updateData.totalPrice += dayCarePrice;
+          updateData.dayCarePrice = dayCarePrice;
+        }
+
+        // 如果是会员，应用折扣
+        const discountAmount = calculateDiscountAmount(service.name);
+        if (discountAmount > 0) {
+          updateData.totalPrice = updateData.totalPrice - discountAmount;
+          updateData.discount = service.discount;
+        }
+
+        // 四舍五入到两位小数
+        updateData.totalPrice = Math.round(updateData.totalPrice * 100) / 100;
+
+        console.log('更新后的预约数据:', {
+          serviceId: updateData.serviceId,
+          serviceName: updateData.serviceType,
+          basePrice: updateData.basePrice,
+          discount: updateData.discount,
+          dayCarePrice: updateData.dayCarePrice,
+          totalPrice: updateData.totalPrice
+        });
+
+        // 使用更新后的数据
+        appointmentData = updateData;
+      }
+
       const updatedAppointment = await apiService.appointments.update(id, appointmentData);
       setAppointments(appointments.map(appointment => 
         appointment._id === id ? updatedAppointment : appointment
       ));
     } catch (error) {
-      console.error('Failed to update appointment:', error);
-      setError('Failed to update appointment. Please try again.');
+      console.error('更新预约失败:', error);
+      setError('更新预约失败，请重试。');
     }
   };
 
@@ -1518,12 +1571,12 @@ const MemberDashboard: React.FC = () => {
                                     return (
                                       <div className="flex justify-between items-center text-xs">
                                         <span className="text-gray-600 whitespace-nowrap">
-                                          Member Discount:
-                                        </span>
+                                      Member Discount:
+                                    </span>
                                         <span className="text-rose-600 pl-1 whitespace-nowrap">
                                           -RM {discountAmount.toFixed(2)}
-                                        </span>
-                                      </div>
+                                    </span>
+                                  </div>
                                     );
                                   })()}
                                   

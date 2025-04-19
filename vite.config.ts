@@ -10,7 +10,9 @@ export default defineConfig(({ command, mode }) => {
     plugins: [react()],
     server: {
       port: 4000,
-      host: true
+      host: '0.0.0.0',
+      strictPort: true,
+      cors: true
     },
     build: {
       // 跳过类型检查以加速构建过程

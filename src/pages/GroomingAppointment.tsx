@@ -99,7 +99,7 @@ const GroomingAppointment: React.FC = () => {
     dayCare: {
       enabled: false,
       type: 'daily',
-      days: 2
+      days: 1  // Changed to 1 for daily care
     }
   });
 
@@ -176,171 +176,91 @@ const GroomingAppointment: React.FC = () => {
     fetchServicesData();
   }, []);
   
-  // 服务类型定义，优先使用后端数据
-  const serviceTypes = backendServices.length > 0 
-    ? backendServices.map(service => ({
+  // 服务类型定义，使用后端数据
+  const serviceTypes = backendServices.map(service => ({
         id: service.id, 
         name: service.name, 
         description: service.description,
         price: service.displayPrice,
         duration: service.displayDuration,
-        icon: service.name === 'Basic Grooming' || service.id === 'basic'
+        icon: service.name === 'Basic Grooming'
           ? <Scissors className="w-10 h-10 text-rose-500 mb-3" />
-          : service.name === 'Premium Grooming' || service.id === 'full'
+          : service.name === 'Premium Grooming'
             ? <Sparkles className="w-10 h-10 text-rose-500 mb-3" />
             : <Bath className="w-10 h-10 text-rose-500 mb-3" />,
         features: service.features?.map(f => f.text) || [],
         recommended: service.recommended
-      }))
-    : [
-    { 
-      id: 'basic', 
-      name: 'Basic Grooming', 
-      description: 'Bath, brush, nail trim, ear cleaning',
-      price: 'RM 60',
-      duration: '1 hour',
-      icon: <Scissors className="w-10 h-10 text-rose-500 mb-3" />,
-      features: [
-        'Bath with premium shampoo',
-        'Brushing and detangling',
-        'Nail trimming',
-        'Ear cleaning'
-      ]
-    },
-    { 
-      id: 'full', 
-      name: 'Premium Grooming', 
-      description: 'Complete grooming experience with professional styling',
-      price: 'RM 120',
-      duration: '3 hours',
-      icon: <Sparkles className="w-10 h-10 text-rose-500 mb-3" />,
-      features: [
-        'Everything in Basic Grooming',
-        'Professional haircut',
-        'Custom styling',
-        'Sanitary trim',
-        'Paw pad trimming'
-      ]
-    },
-    { 
-      id: 'spa', 
-      name: 'Spa Treatment', 
-      description: 'The ultimate luxurious pet relaxation',
-      price: 'RM 220',
-      duration: '4 hours',
-      icon: <Bath className="w-10 h-10 text-rose-500 mb-3" />,
-      features: [
-        'Everything in Full Grooming',
-        'Aromatherapy bath',
-        'Deep conditioning treatment',
-        'Professional massage',
-        'Teeth brushing',
-        'Blueberry facial'
-      ],
-      recommended: true
-    }
-  ];
+  })).sort((a, b) => {
+    // Custom sort order: Basic Grooming first, then Premium Grooming, then others
+    if (a.name === 'Basic Grooming') return -1;
+    if (b.name === 'Basic Grooming') return 1;
+    if (a.name === 'Premium Grooming') return -1;
+    if (b.name === 'Premium Grooming') return 1;
+    return 0;
+  });
   
-  // 获取服务时长（优先使用后端数据）
-  const getServiceDuration = (serviceType: string): number => {
-    if (backendServices.length > 0) {
-      const service = backendServices.find(s => s.id === serviceType);
-      if (service) return service.duration;
+  // 获取服务时长
+  const getServiceDuration = (serviceId: string): number => {
+    const service = backendServices.find(s => s.id === serviceId);
+    if (!service) {
+      console.warn(`Service duration not found for id: ${serviceId}`);
+      return 0;
     }
-    
-    // 后备方案
-    switch (serviceType) {
-      case 'basic': return 1;
-      case 'full': return 3;
-      case 'spa': return 4;
-      default: return 1;
-    }
+    return service.duration;
   };
-  
-  // 计算基本价格（优先使用后端数据）
-  const calculateBasePrice = (serviceType: string): number => {
-    if (backendServices.length > 0) {
-      const service = backendServices.find(s => s.id === serviceType);
-      if (service) return service.price;
+
+  // Calculate base price for grooming service
+  const calculateBasePrice = (serviceId: string): number => {
+    const service = backendServices.find(s => s.id === serviceId);
+    if (!service) {
+      console.warn(`Service not found for id: ${serviceId}`);
+      return 0;
     }
-    
-    // 后备方案
-    switch (serviceType) {
-      case 'basic': return 60;
-      case 'full': return 120;
-      case 'spa': return 220;
-      default: return 0;
-    }
+    console.log(`Found service price for ${service.name}:`, service.price);
+    return service.price;
   };
-  
-  // 计算日托价格（优先使用后端数据）
+
+  // Calculate daycare price
   const calculateDayCarePrice = (dayCare: { enabled: boolean; type: string; days: number | string; }): number => {
     if (!dayCare.enabled) return 0;
     
-    // 检查是否有有效天数
-    const days = typeof dayCare.days === 'number' ? dayCare.days : parseInt(String(dayCare.days)) || 0;
-    if (dayCare.type === 'longTerm' && days < 2) {
-      // 对于多天选项，需要至少2天
+    const option = backendDayCareOptions.find(opt => opt.type === dayCare.type);
+    if (!option) {
+      console.warn(`Day care option not found for type: ${dayCare.type}`);
       return 0;
     }
     
-    if (backendDayCareOptions.length > 0) {
-      const option = backendDayCareOptions.find(o => o.type === dayCare.type);
-      if (option) {
-        if (dayCare.type === 'daily') {
-          return option.price;
-        } else {
-          return days * option.price;
-        }
-      }
-    }
-    
-    // 后备方案
-    if (dayCare.type === 'daily') return 50;
-    return days * 80;
+    const days = dayCare.type === 'daily' ? 1 : Number(dayCare.days);
+    console.log(`Calculating daycare price for ${dayCare.type}, days: ${days}, base price: ${option.price}`);
+    return option.price * days;
   };
 
-  // 计算总价格（会考虑折扣）
-  const calculateTotalPrice = (serviceType: string, dayCare: { enabled: boolean; type: string; days: number | string; }, shouldApplyDiscount: boolean): number => {
-    // 计算基本美容服务价格
-    let groomingPrice = calculateBasePrice(serviceType);
-    
-    // 添加日托价格
-    const dayCarePrice = calculateDayCarePrice(dayCare);
-    
-    // 计算总价（不含折扣）
-    let total = groomingPrice + dayCarePrice;
-    
-    // 应用会员折扣 - 只应用于美容服务
-    if (shouldApplyDiscount && user) {
-      // 找到当前服务的折扣率
-      let discountRate = 0;
-      if (backendServices.length > 0) {
-        const service = backendServices.find(s => s.id === serviceType);
-        if (service && service.discount) {
-          discountRate = service.discount;
-        }
-      } else {
-        // 默认折扣率
-        switch (serviceType) {
-          case 'basic': discountRate = 5; break;
-          case 'full': discountRate = 10; break;
-          case 'spa': discountRate = 15; break;
-          default: discountRate = 0;
-        }
-      }
-      
-      // 计算折扣金额 - 只对美容服务应用
-      const discountAmount = (groomingPrice * discountRate) / 100;
-      setDiscount(discountAmount);
-      
-      // 应用折扣
-      total -= discountAmount;
-    } else {
-      setDiscount(0);
+  // Calculate total price including discounts
+  const calculateTotalPrice = (serviceId: string, dayCare: { enabled: boolean; type: string; days: number | string; }, shouldApplyDiscount: boolean): number => {
+    const service = backendServices.find(s => s.id === serviceId);
+    if (!service) {
+      console.warn(`Service not found for id: ${serviceId}`);
+      return 0;
     }
+
+    const basePrice = service.price;
+    console.log('Base service price:', basePrice);
+
+    const dayCarePrice = calculateDayCarePrice(dayCare);
+    console.log('Day care price:', dayCarePrice);
     
-    return total;
+    let total = basePrice + dayCarePrice;
+    let discountAmount = 0;
+
+    if (shouldApplyDiscount) {
+      discountAmount = (basePrice * (service.discount / 100));
+      total = (basePrice - discountAmount) + dayCarePrice;
+      console.log(`Applied ${service.discount}% discount: -${discountAmount}`);
+    }
+
+    console.log('Total price:', total);
+      setDiscount(discountAmount);
+    return Math.round(total * 100) / 100;
   };
 
   // 检查用户是否是会员
@@ -365,14 +285,10 @@ const GroomingAppointment: React.FC = () => {
       const fetchAvailableTimes = async () => {
         setLoading(true);
         try {
-          // 获取选定日期的所有预约
           const response = await apiService.appointments.getTimeSlots(formData.date);
-          console.log('API response:', response); // 添加日志，查看返回的数据格式
+          console.log('API response:', response);
           
-          const serviceDuration = getServiceDuration(formData.serviceType);
-          
-          if (response && Array.isArray(response) && response.length > 0) {
-            // 修复时间槽映射逻辑，使用正确的ApiTimeSlotResponse类型
+          if (response && Array.isArray(response)) {
             const allTimeSlots: TimeSlot[] = response.map((apiSlot: ApiTimeSlotResponse) => ({
               time: apiSlot.time,
               available: apiSlot.isAvailable !== undefined ? apiSlot.isAvailable : (apiSlot.available !== undefined ? apiSlot.available : false),
@@ -380,45 +296,29 @@ const GroomingAppointment: React.FC = () => {
                               (typeof apiSlot.currentBookings === 'string' ? parseInt(apiSlot.currentBookings) : 0)
             }));
             
-            // 设置处理好的时间槽
             setTimeSlots(allTimeSlots);
-            console.log('Set time slots from API:', allTimeSlots.map(slot => 
-              `${slot.time}: avail=${slot.available}, bookings=${slot.currentBookings}`).join(', '));
-          } else {
-            // 如果API没有返回有效数据，生成默认时间槽
-            console.log('API returned no data, using default time slots');
-            const defaultSlots = generateDefaultTimeSlots(serviceDuration);
-            setTimeSlots(defaultSlots);
+            console.log('Set time slots from API:', allTimeSlots);
           }
         } catch (error) {
           console.error('Failed to fetch time slots:', error);
           setError('Failed to load available time slots. Please try again later.');
-          
-          // 生成默认时间槽
-          const serviceDuration = getServiceDuration(formData.serviceType);
-          const defaultSlots = generateDefaultTimeSlots(serviceDuration);
-          setTimeSlots(defaultSlots);
-          console.log('Set default time slots due to API error:', defaultSlots.length);
+          setTimeSlots([]);
         } finally {
           setLoading(false);
         }
       };
       
-      // 首次加载时获取时间槽
       fetchAvailableTimes();
       
-      // 设置定时刷新，每60秒刷新一次时间槽数据
       const refreshInterval = setInterval(() => {
         console.log('Refreshing time slots...');
         fetchAvailableTimes();
-      }, 60000); // 每60秒刷新一次
+      }, 60000);
       
-      // 组件卸载时清除定时器
       return () => {
         clearInterval(refreshInterval);
       };
     } else {
-      // 如果没有选择日期或服务类型，清空时间槽
       setTimeSlots([]);
     }
   }, [formData.date, formData.serviceType]);
@@ -591,202 +491,113 @@ const GroomingAppointment: React.FC = () => {
     e.preventDefault();
     
     if (!validateForm()) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setSubmitError('Please fill out all required fields and check for errors.');
-      return;
-    }
-
-    console.log('提交表单，选择的服务类型ID:', formData.serviceType);
-    console.log('服务名称对照:', backendServices.map(s => `${s.id}: ${s.name}`));
-    
-    // 检查是否已提交
-    if (isSubmitting) {
-      return;
-    }
-
-    // 额外验证：检查选择的时间槽是否仍然可用（预约数量未超限）
-    const selectedTimeSlot = timeSlots.find(slot => slot.time === formData.time);
-    if (!selectedTimeSlot || !selectedTimeSlot.available || selectedTimeSlot.currentBookings >= 5) {
-      setSubmitError('The selected time slot is no longer available. Please choose another time.');
-      timeSelectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return;
-    }
-
-    // 验证是否有足够的连续时间槽
-    const serviceDuration = getServiceDuration(formData.serviceType);
-    const selectedSlotIndex = timeSlots.findIndex(slot => slot.time === formData.time);
-    
-    for (let i = 0; i < serviceDuration; i++) {
-      if (selectedSlotIndex + i >= timeSlots.length || 
-          !timeSlots[selectedSlotIndex + i].available ||
-          timeSlots[selectedSlotIndex + i].currentBookings >= 5) {
-        setSubmitError(`This service requires ${serviceDuration} consecutive hours. Some of the required time slots are no longer available.`);
-        timeSelectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
-      }
     }
 
     setIsSubmitting(true);
     setSubmitError('');
     
     try {
-      // Prepare appointment data
-      const serviceDuration = getServiceDuration(formData.serviceType);
+      // 确保我们有最新的服务数据
+      const services = await apiService.services.getGroomingServices() as GroomingService[];
+      const service = services.find(s => s.id === formData.serviceType);
       
-      // Get standardized service name based on service ID
-      let serviceTypeName: 'Basic Grooming' | 'Full Grooming' | 'Spa Treatment' = 'Basic Grooming';
-      switch (formData.serviceType) {
-        case 'basic':
-          serviceTypeName = 'Basic Grooming';
-          break;
-        case 'full':
-          serviceTypeName = 'Full Grooming';
-          break;
-        case 'spa':
-          serviceTypeName = 'Spa Treatment';
-          break;
-        default:
-          // 尝试从服务名称直接匹配
-          const matchedService = backendServices.find(s => s.id === formData.serviceType);
-          if (matchedService) {
-            if (matchedService.name === 'Premium Grooming') {
-              serviceTypeName = 'Full Grooming';
-            } else if (matchedService.name === 'Spa Treatment') {
-              serviceTypeName = 'Spa Treatment';
-            } else {
-              serviceTypeName = 'Basic Grooming';
-            }
-          }
-          console.log(`将服务类型${formData.serviceType}映射为${serviceTypeName}`);
-          break;
+      if (!service) {
+        throw new Error(`Service not found for id: ${formData.serviceType}`);
       }
+
+      // 计算实际价格
+      const basePrice = service.price;
+      const dayCareOptions = await apiService.services.getDayCareOptions() as DayCareOption[];
+      const dayCarePrice = formData.dayCare.enabled ? 
+        dayCareOptions.find(opt => opt.type === formData.dayCare.type)?.price || 0 : 0;
       
-      const appointmentData = {
+      const discountAmount = isMember ? (basePrice * (service.discount / 100)) : 0;
+      const totalPrice = (basePrice - discountAmount) + (formData.dayCare.enabled ? dayCarePrice * (formData.dayCare.type === 'daily' ? 1 : parseInt(formData.dayCare.days.toString())) : 0);
+
+      // Create appointment data with the latest service information
+      const appointmentData: Omit<Appointment, '_id'> = {
+        user: user?._id,
         petName: formData.petName,
         petType: formData.petType as 'dog' | 'cat',
         date: formData.date,
         time: formData.time,
-        serviceType: serviceTypeName,
-        duration: serviceDuration,
-        notes: formData.notes,
-        ownerName: formData.ownerName,
-        ownerPhone: formData.ownerPhone,
-        ownerEmail: formData.ownerEmail,
-        totalPrice: totalPrice,
-        status: 'Booked' as 'Booked' | 'Completed' | 'Cancelled',
+        serviceType: service.name as 'Basic Grooming' | 'Premium Grooming' | 'Spa Treatment',
+        serviceId: service.id,
+        duration: service.duration,
         dayCareOptions: formData.dayCare.enabled ? {
           type: formData.dayCare.type as 'daily' | 'longTerm',
-          days: formData.dayCare.days,
-          morning: true,         // Default to full day
+          days: formData.dayCare.type === 'daily' ? 1 : parseInt(formData.dayCare.days.toString()),
+          morning: true,
           afternoon: true,
           evening: true
         } : undefined,
-        // 如果用户已登录，添加用户ID关联
-        user: user?._id
+        totalPrice: Math.round(totalPrice * 100) / 100,
+        ownerName: formData.ownerName,
+        ownerPhone: formData.ownerPhone,
+        ownerEmail: formData.ownerEmail,
+        notes: formData.notes,
+        status: 'Booked'
       };
+
+      console.log('Submitting appointment data with latest service info:', appointmentData);
       
-      // Send appointment request
-      try {
-        // 尝试使用忽略授权错误的方式提交预约
         const response = await apiService.appointments.add(appointmentData);
         if (response && response._id) {
       setSubmitSuccess(true);
           setSuccess('Appointment successful! We will contact you soon to confirm.');
           
-          // 发送确认邮件给客户
-          try {
-            // 准备日托信息文本
-            let dayCareInfoText = 'Not selected';
-            if (formData.dayCare.enabled) {
-              if (formData.dayCare.type === 'daily') {
-                dayCareInfoText = 'Daily Day Care';
-              } else if (formData.dayCare.type === 'longTerm') {
-                dayCareInfoText = `${formData.dayCare.days} Days Long-term Day Care`;
-              }
-            }
-            
-            const customerTemplateParams = {
+        // Send confirmation emails
+        try {
+          const dayCareInfoText = formData.dayCare.enabled
+            ? `${formData.dayCare.type === 'daily' ? 'Daily' : formData.dayCare.days + ' Days'} Day Care`
+            : 'Not selected';
+          
+          const emailData = {
               to_name: formData.ownerName,
               to_email: formData.ownerEmail,
-              // 添加客户信息字段
-              customer_name: formData.ownerName,
-              customer_email: formData.ownerEmail,
-              customer_phone: formData.ownerPhone,
-              member_status: user ? 'Member' : 'Non-member',
-              // 预约详情字段
+          customer_name: formData.ownerName,
+          customer_email: formData.ownerEmail,
+          customer_phone: formData.ownerPhone,
+            member_status: user ? 'Member' : 'Non-member',
               appointment_date: new Date(formData.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
               appointment_time: formData.time,
               pet_name: formData.petName,
               pet_type: formData.petType === 'dog' ? 'Dog' : 'Cat',
-              service_type: serviceTypeName,
-              // 价格明细
-              base_service_price: `RM ${calculateBasePrice(formData.serviceType).toFixed(2)}`,
-              day_care_price: formData.dayCare.enabled ? `RM ${calculateDayCarePrice(formData.dayCare).toFixed(2)}` : '-',
-              member_discount: discount > 0 ? `-RM ${discount.toFixed(2)}` : 'No discount',
-              total_price: totalPrice.toFixed(2),
-              day_care_info: dayCareInfoText,
-              // 店铺信息
-              shop_address: '123 Jalan ABC, Taman XYZ, 12345 Kuala Lumpur, Malaysia'
-            };
-            
-            console.log('发送客户确认邮件，参数:', customerTemplateParams);
-            
-            // 发送邮件给客户
-            await emailjs.send(
-          'service_4awqr8x',
-              'template_uznkxfq',
-              customerTemplateParams
-            );
-            
-            // 发送邮件给管理员
-            const adminTemplateParams = {
-              customer_name: formData.ownerName,
-              customer_email: formData.ownerEmail,
-              customer_phone: formData.ownerPhone,
-              member_status: user ? 'Member' : 'Non-member',
-              appointment_date: new Date(formData.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-              appointment_time: formData.time,
-              pet_name: formData.petName,
-              pet_type: formData.petType === 'dog' ? 'Dog' : 'Cat',
-              service_type: serviceTypeName,
-              // 价格明细
-              base_service_price: `RM ${calculateBasePrice(formData.serviceType).toFixed(2)}`,
-              day_care_price: formData.dayCare.enabled ? `RM ${calculateDayCarePrice(formData.dayCare).toFixed(2)}` : '-',
-              member_discount: discount > 0 ? `-RM ${discount.toFixed(2)}` : 'No discount',
-              total_price: totalPrice.toFixed(2),
-              day_care_info: dayCareInfoText,
-              notes: formData.notes || 'No special notes',
-              shop_address: '123 Jalan ABC, Taman XYZ, 12345 Kuala Lumpur, Malaysia'
-            };
-            
-            console.log('发送管理员通知邮件，参数:', adminTemplateParams);
-            
-            await emailjs.send(
-              'service_4awqr8x',
-              'template_7cysc9f',
-              adminTemplateParams
-            );
-            
-            console.log('Emails sent successfully to customer and admin');
+            service_type: service.name,
+            base_service_price: `RM ${basePrice.toFixed(2)}`,
+            day_care_price: formData.dayCare.enabled ? `RM ${dayCarePrice.toFixed(2)}` : '-',
+            member_discount: user ? `-${service.discount}%` : 'No discount',
+            total_price: totalPrice.toFixed(2),
+            day_care_info: dayCareInfoText
+          };
+          
+          // Send email to customer
+          await emailjs.send('service_4awqr8x', 'template_uznkxfq', emailData);
+          
+          // Send email to admin
+          await emailjs.send('service_4awqr8x', 'template_7cysc9f', {
+            ...emailData,
+            notes: formData.notes || 'No special notes'
+          });
+          
+          console.log('Emails sent successfully');
       } catch (emailError) {
             console.error('Failed to send emails:', emailError);
-            // 电子邮件发送失败不影响预约成功
           }
           
-          // 处理预约成功后的通知创建
+        // Create notification for member
           if (user) {
             try {
-              // 创建通知数据
               const notificationData = {
-                title: `🐾 New ${serviceTypeName} Appointment`,
-                message: `Your ${serviceTypeName} appointment for ${formData.petName} (${formData.petType === 'dog' ? 'Dog' : 'Cat'}) on ${new Date(formData.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at ${formatTo12Hour(formData.time)} has been confirmed.`,
+              title: `🐾 New ${service.name} Appointment`,
+              message: `Your ${service.name} appointment for ${formData.petName} (${formData.petType === 'dog' ? 'Dog' : 'Cat'}) on ${new Date(formData.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} at ${formatTo12Hour(formData.time)} has been confirmed.`,
                 type: 'appointment'
               };
               
-              // 使用axios直接创建通知
               const token = localStorage.getItem('token');
               if (token) {
-                await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:4003'}/notifications/create`, notificationData, {
+              await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:4003'}/notifications/create`, notificationData, {
                   headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
@@ -795,14 +606,10 @@ const GroomingAppointment: React.FC = () => {
                 console.log('Notification created successfully');
               }
               
-              // 触发事件让会员仪表板知道有新预约和通知
               window.dispatchEvent(new CustomEvent('appointmentCreated'));
-              
-              // 强制刷新会员仪表板数据 - 设置一个标志
               sessionStorage.setItem('refreshDashboard', 'true');
       } catch (notificationError) {
         console.error('Failed to create notification:', notificationError);
-              // 通知创建失败不影响预约成功
             }
       }
       
@@ -819,20 +626,14 @@ const GroomingAppointment: React.FC = () => {
             ownerEmail: user ? user.email || '' : '',
           dayCare: {
             enabled: false,
-            type: 'daily',
-              days: 2
+            type: backendDayCareOptions[0]?.type || 'daily',
+            days: 1
           }
         });
         setTotalPrice(0);
         setDiscount(0);
       
-      // Scroll to top to show success message
       window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    } catch (error: any) {
-        console.error('Failed to create appointment:', error);
-        setSubmitError(error.message || 'Failed to submit appointment. Please try again later.');
-        setSubmitSuccess(false);
       }
     } catch (error: any) {
       console.error('Failed to create appointment:', error);
@@ -849,10 +650,10 @@ const GroomingAppointment: React.FC = () => {
       try {
         const services = await apiService.services.getGroomingServices();
         if (Array.isArray(services)) {
-          const service = services.find((s) => s.name === formData.serviceType);
-          setSelectedService(service || null);
+          const service = services.find((s) => s.id === formData.serviceType);
+        setSelectedService(service || null);
         }
-      } catch (error) {
+    } catch (error) {
         console.error('Failed to fetch service info:', error);
       }
     };
@@ -889,6 +690,81 @@ const GroomingAppointment: React.FC = () => {
       </button>
     );
   };
+
+  // Handle daycare option changes
+  const handleDayCareChange = (field: string, value: any) => {
+    if (field === 'enabled') {
+      const defaultOption = backendDayCareOptions[0];
+      if (!defaultOption) return;
+
+      setFormData(prev => ({
+        ...prev,
+        dayCare: {
+          ...prev.dayCare,
+          enabled: value,
+          type: defaultOption.type,
+          days: defaultOption.type === 'daily' ? 1 : 2
+        }
+      }));
+    } else if (field === 'type') {
+      const option = backendDayCareOptions.find(opt => opt.type === value);
+      if (!option) return;
+
+      setFormData(prev => ({
+        ...prev,
+        dayCare: {
+          ...prev.dayCare,
+          type: value,
+          days: value === 'daily' ? 1 : 2
+        }
+      }));
+    } else if (field === 'days') {
+      const option = backendDayCareOptions.find(opt => opt.type === formData.dayCare.type);
+      if (!option || formData.dayCare.type === 'daily') return;
+
+      // Allow any number input
+      setFormData(prev => ({
+        ...prev,
+        dayCare: {
+          ...prev.dayCare,
+          days: value
+        }
+      }));
+    }
+
+    // Recalculate total price after daycare changes
+    if (formData.serviceType) {
+      const newTotal = calculateTotalPrice(
+        formData.serviceType,
+        {
+          ...formData.dayCare,
+          [field]: field === 'days' ? parseInt(value) || 1 : value
+        },
+        isMember
+      );
+      setTotalPrice(newTotal);
+    }
+  };
+
+  // Add daycare options sorting
+  const handleDayCareTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newType = e.target.value;
+    setFormData({
+      ...formData,
+      dayCare: {
+        ...formData.dayCare,
+        type: newType,
+        days: newType === 'daily' ? 1 : 2
+      }
+    });
+  };
+
+  // Sort daycare options to show daily first
+  const sortedDayCareOptions = backendDayCareOptions.sort((a, b) => {
+    if (a.type === 'daily') return -1;
+    if (b.type === 'daily') return 1;
+    return 0;
+  });
 
   // 临时返回占位组件，后续将实现完整功能
   return (
@@ -1109,7 +985,7 @@ const GroomingAppointment: React.FC = () => {
                                   {backendServices.length > 0 
                                     ? `${backendServices.find(s => s.id === service.id)?.discount || 0}% Off` 
                                     : service.id === 'basic' ? '5% Off' 
-                                      : service.id === 'full' ? '10% Off' 
+                                      : service.id === 'premium' ? '10% Off' 
                                       : service.id === 'spa' ? '15% Off' : ''}
                           </div>
                               )}
@@ -1119,8 +995,8 @@ const GroomingAppointment: React.FC = () => {
                                 <li key={index} className="flex items-start mb-1.5 sm:mb-2">
                                   <Check className="w-4 h-4 sm:w-4 sm:h-4 text-rose-500 mt-0.5 mr-2 sm:mr-2 flex-shrink0" />
                                   <span className="text-gray-600">{feature}</span>
-                                </li>
-                              ))}
+                              </li>
+                            ))}
                           </ul>
                       </div>
                     ))}
@@ -1140,23 +1016,7 @@ const GroomingAppointment: React.FC = () => {
                               checked={formData.dayCare.enabled}
                               onChange={(e) => {
                                 const enabled = e.target.checked;
-                                setFormData({
-                                  ...formData,
-                                  dayCare: {
-                                    ...formData.dayCare,
-                                    enabled
-                                  }
-                                });
-                                
-                                // Recalculate price
-                                if (formData.serviceType) {
-                                  const newTotal = calculateTotalPrice(
-                                    formData.serviceType, 
-                                    { ...formData.dayCare, enabled }, 
-                                    !!user
-                                  );
-                                  setTotalPrice(newTotal);
-                                }
+                                handleDayCareChange('enabled', enabled);
                               }}
                               className="h-4 w-4 text-rose-500 focus:ring-rose-500 rounded"
                             />
@@ -1172,23 +1032,7 @@ const GroomingAppointment: React.FC = () => {
                               checked={formData.dayCare.enabled}
                               onChange={(e) => {
                                 const enabled = e.target.checked;
-                                setFormData({
-                                ...formData,
-                                dayCare: {
-                                  ...formData.dayCare,
-                                    enabled
-                                  }
-                                });
-                                
-                                // Recalculate price
-                                if (formData.serviceType) {
-                                  const newTotal = calculateTotalPrice(
-                                    formData.serviceType, 
-                                    { ...formData.dayCare, enabled }, 
-                                    !!user
-                                  );
-                                  setTotalPrice(newTotal);
-                                }
+                                handleDayCareChange('enabled', enabled);
                               }}
                               className="h-4 w-4 text-rose-500 focus:ring-rose-500 rounded"
                             />
@@ -1220,41 +1064,14 @@ const GroomingAppointment: React.FC = () => {
                               <label className="block text-sm font-medium text-gray-700">Type</label>
                               <select
                                 value={formData.dayCare.type}
-                                onChange={(e) => {
-                                  const type = e.target.value;
-                                  const newDayCare = {
-                                      ...formData.dayCare,
-                                    type
-                                  };
-                                  setFormData({
-                                    ...formData,
-                                    dayCare: newDayCare
-                                  });
-                                  
-                                  // Recalculate price
-                                  if (formData.serviceType) {
-                                    const newTotal = calculateTotalPrice(
-                                      formData.serviceType, 
-                                      newDayCare, 
-                                      !!user
-                                    );
-                                    setTotalPrice(newTotal);
-                                  }
-                                }}
+                                onChange={handleDayCareTypeChange}
                                 className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-rose-500 focus:ring focus:ring-rose-500 focus:ring-opacity-50 sm:text-base p-2 bg-white"
                               >
-                                {backendDayCareOptions.length > 0 ? (
-                                  backendDayCareOptions.map(option => (
+                                {sortedDayCareOptions.map(option => (
                                     <option key={option.type} value={option.type}>
-                                      {option.type === 'daily' ? 'Single Day' : 'Multiple Days'} - {option.displayPrice}/day
+                                      {option.type === 'daily' ? 'Daily' : 'Long Term'} - {option.displayPrice}/day
                                     </option>
-                                  ))
-                                ) : (
-                                  <>
-                                    <option value="daily">Single Day - RM50/day</option>
-                                    <option value="longTerm">Multiple Days - RM80/day</option>
-                                  </>
-                                )}
+                                ))}
                               </select>
                             </div>
 
@@ -1263,34 +1080,16 @@ const GroomingAppointment: React.FC = () => {
                               <div className="flex-1">
                                 <label className="block text-sm font-medium text-gray-700">Days</label>
                                   <input
-                                  type="text"
-                                    value={formData.dayCare.days}
+                                  type="number"
+                                  value={formData.dayCare.days}
                                   onChange={(e) => {
                                     const inputValue = e.target.value;
-                                    // 允许用户输入任何值，包括非数字字符
-                                    const newDayCare = {
-                                      ...formData.dayCare,
-                                      days: inputValue === '' ? 0 : parseInt(inputValue) || 0
-                                    };
-                                      setFormData({
-                                      ...formData,
-                                      dayCare: newDayCare
-                                    });
-                                    
-                                    // Recalculate price
-                                    if (formData.serviceType) {
-                                      const newTotal = calculateTotalPrice(
-                                        formData.serviceType, 
-                                        newDayCare, 
-                                        !!user
-                                      );
-                                      setTotalPrice(newTotal);
-                                    }
+                                    handleDayCareChange('days', inputValue);
                                   }}
                                   className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-rose-500 focus:ring focus:ring-rose-500 focus:ring-opacity-50 sm:text-base p-2 bg-white"
                                 />
-                                {formData.dayCare.days < 2 && (
-                                  <p className="mt-1 text-sm text-red-600">Please enter at least 2 days for multiple days option</p>
+                                {formData.dayCare.type === 'longTerm' && Number(formData.dayCare.days) < 2 && (
+                                  <p className="mt-1 text-sm text-red-600">Please enter at least 2 days for Long Term option</p>
                               )}
                               </div>
                             )}
@@ -1359,7 +1158,7 @@ const GroomingAppointment: React.FC = () => {
                                       <span> ({backendServices.find(s => s.id === formData.serviceType)?.discount || 0}%)</span>
                                     ) : (
                                       formData.serviceType === 'basic' ? <span> (5%)</span> :
-                                      formData.serviceType === 'full' ? <span> (10%)</span> :
+                                      formData.serviceType === 'premium' ? <span> (10%)</span> :
                                       formData.serviceType === 'spa' ? <span> (15%)</span> : null
                                     )}:
                               </span>

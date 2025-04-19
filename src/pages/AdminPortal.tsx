@@ -85,6 +85,10 @@ const AdminPortal: React.FC = () => {
   const usersPerPage = 2;
   const [activeView, setActiveView] = useState<'dashboard' | 'users' | 'all-appointments' | 'upcoming' | 'completed' | 'pet-listings' | 'services'>('dashboard');
 
+  // Add state
+  const [groomingServices] = useState<GroomingService[]>([]);
+  const [dayCareOptions] = useState<DayCareOption[]>([]);
+
   useEffect(() => {
     // Check if user is admin, if not redirect to member dashboard
     if (user && user.role !== 'admin') {
@@ -883,22 +887,32 @@ const AdminPortal: React.FC = () => {
     });
   };
 
-  // Add a helper function to calculate price details
+  // Update getPriceDetails function to use groomingServices and dayCareOptions
   const getPriceDetails = (appointment: Appointment) => {
     // Get base price based on service type
     let basePrice = 0;
+    
+    // Find the matching service in groomingServices
+    const service = groomingServices.find(s => s.name === appointment.serviceType);
+    if (service) {
+      basePrice = service.price;
+      console.log(`Found service price for ${service.name}: ${service.price}`);
+    } else {
+      console.warn(`Service not found for type: ${appointment.serviceType}, using default price`);
+      // Use default prices as fallback
     switch (appointment.serviceType) {
       case 'Basic Grooming':
-        basePrice = 60;
+          basePrice = 70;
         break;
-      case 'Full Grooming':
-        basePrice = 120;
+        case 'Premium Grooming':
+          basePrice = 140;
         break;
       case 'Spa Treatment':
-        basePrice = 220;
+          basePrice = 240;
         break;
       default:
         basePrice = 0;
+      }
     }
 
     // Calculate daycare price if applicable
@@ -1210,60 +1224,60 @@ const AdminPortal: React.FC = () => {
                 />
               </div>
               <div className="flex flex-col md:flex-row gap-2 md:gap-4">
-                <div className="relative">
+              <div className="relative">
                   <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 md:hidden" size={20} />
-                  <select
+                <select
                     className="pl-10 md:pl-4 pr-4 py-2 border border-gray-300 rounded-md appearance-none bg-white w-[180px]"
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                  >
-                    <option>All Status</option>
-                    <option>Upcoming</option>
-                    <option>Completed</option>
-                  </select>
-                </div>
-                <div className="relative">
-                  <div className="flex">
-                    <input
-                      type="date"
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                >
+                  <option>All Status</option>
+                  <option>Upcoming</option>
+                  <option>Completed</option>
+                </select>
+              </div>
+              <div className="relative">
+                <div className="flex">
+                  <input
+                    type="date"
                       className="pr-8 py-2 pl-3 border border-gray-300 rounded-l-md w-[180px] cursor-pointer"
-                      value={filterDate}
-                      onChange={(e) => setFilterDate(e.target.value)}
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
                       placeholder="mm/dd/yyyy"
-                      onClick={(e) => {
-                        const target = e.target as HTMLInputElement;
-                        target.showPicker();
-                      }}
-                    />
-                    <button
-                      onClick={() => setFilterDate('')}
+                    onClick={(e) => {
+                      const target = e.target as HTMLInputElement;
+                      target.showPicker();
+                    }}
+                  />
+                  <button
+                    onClick={() => setFilterDate('')}
                       className="px-2 py-2 bg-gray-100 border-y border-r border-gray-300 rounded-r-md hover:bg-gray-200"
-                      title="Reset date filter"
-                    >
+                    title="Reset date filter"
+                  >
                       <X size={16} className="text-gray-500" />
-                    </button>
-                  </div>
+                  </button>
                 </div>
-                <div className="relative">
-                  <div className="flex">
-                    <input
-                      type="time"
+              </div>
+              <div className="relative">
+                <div className="flex">
+                  <input
+                    type="time"
                       className="pr-8 py-2 pl-3 border border-gray-300 rounded-l-md w-[180px] cursor-pointer"
-                      value={filterTime}
-                      onChange={(e) => setFilterTime(e.target.value)}
+                    value={filterTime}
+                    onChange={(e) => setFilterTime(e.target.value)}
                       placeholder="--:-- --"
-                      onClick={(e) => {
-                        const target = e.target as HTMLInputElement;
-                        target.showPicker();
-                      }}
-                    />
-                    <button
-                      onClick={() => setFilterTime('')}
+                    onClick={(e) => {
+                      const target = e.target as HTMLInputElement;
+                      target.showPicker();
+                    }}
+                  />
+                  <button
+                    onClick={() => setFilterTime('')}
                       className="px-2 py-2 bg-gray-100 border-y border-r border-gray-300 rounded-r-md hover:bg-gray-200"
-                      title="Reset time filter"
-                    >
+                    title="Reset time filter"
+                  >
                       <X size={16} className="text-gray-500" />
-                    </button>
+                  </button>
                   </div>
                 </div>
               </div>
@@ -1313,10 +1327,10 @@ const AdminPortal: React.FC = () => {
                               <div className="flex flex-col md:flex-col">
                                 <div className="flex items-center justify-between mb-2">
                                   <h3 className="text-lg md:text-xl font-semibold text-gray-800">{item.member.name}</h3>
-                                  {isMember && (
-                                    <span className="bg-pink-100 text-pink-600 text-sm font-medium px-3 py-1 rounded-full">
-                                      Member
-                                    </span>
+                              {isMember && (
+                                  <span className="bg-pink-100 text-pink-600 text-sm font-medium px-3 py-1 rounded-full">
+                                    Member
+                                  </span>
                                   )}
                                 </div>
                                 <div className="space-y-1">
@@ -1336,48 +1350,48 @@ const AdminPortal: React.FC = () => {
                                       className="bg-gray-50 p-3 md:p-4 rounded-lg"
                                     >
                                       <div className="flex justify-between items-start">
-                                        <div className="flex-grow">
+                                      <div className="flex-grow">
                                           <div className="flex items-center gap-2 mb-1">
                                             <h4 className="text-base font-medium text-gray-900">
                                               {appointment.serviceType} - {appointment.petName}
                                             </h4>
                                             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                                              {appointment.petType === 'dog' ? '🐕 Dog' : '🐱 Cat'}
-                                            </span>
+                                                {appointment.petType === 'dog' ? '🐕 Dog' : '🐱 Cat'}
+                                              </span>
                                           </div>
                                           <p className="text-gray-600 text-sm">
-                                            {formatDate(appointment.date)} at {formatTime(appointment.time)}
-                                          </p>
+                                          {formatDate(appointment.date)} at {formatTime(appointment.time)}
+                                        </p>
                                           {appointment.dayCareOptions && (
                                             <p className="text-gray-600 text-sm">
                                               Daycare: {appointment.dayCareOptions.type === 'longTerm' ? 'Long Term' : 'Daily'} ({appointment.dayCareOptions.days} days)
                                             </p>
                                           )}
                                           <div className="flex justify-between items-center mt-2">
-                                            <span
+                                          <span
                                               className={`inline-block px-2 py-1 text-xs rounded ${
                                                 getDisplayStatus(appointment) === 'Upcoming'
                                                   ? 'bg-blue-100 text-blue-700'
                                                   : getDisplayStatus(appointment) === 'Completed'
                                                   ? 'bg-green-100 text-green-700'
                                                   : 'bg-gray-100 text-gray-700'
-                                              }`}
-                                            >
-                                              {getDisplayStatus(appointment)}
-                                            </span>
+                                            }`}
+                                          >
+                                            {getDisplayStatus(appointment)}
+                                          </span>
                                             <div className="flex items-center gap-4">
-                                              <PriceDetailsDropdown appointment={appointment} />
-                                              <button
+                                          <PriceDetailsDropdown appointment={appointment} />
+                                          <button
                                                 onClick={() => handleDeleteClick(
-                                                  appointment._id || '', 
-                                                  `${appointment.date}T${appointment.time}`, 
+                                              appointment._id || '',
+                                              `${appointment.date}T${appointment.time}`,
                                                   appointment.serviceType || ''
                                                 )}
                                                 className="text-red-500 hover:text-red-700"
                                                 title="Delete appointment"
-                                              >
-                                                <Trash2 size={18} />
-                                              </button>
+                                        >
+                                          <Trash2 size={18} />
+                                        </button>
                                             </div>
                                           </div>
                                         </div>
@@ -1395,36 +1409,36 @@ const AdminPortal: React.FC = () => {
 
                 {/* 分页控制 */}
                 {Math.ceil(filteredMembers.length / usersPerPage) > 1 && (
-                  <div className="mt-6 flex justify-between items-center">
-                    <p className="text-sm text-gray-600">
-                      Showing {Math.min((currentPage - 1) * usersPerPage + 1, filteredMembers.length)} to{' '}
-                      {Math.min(currentPage * usersPerPage, filteredMembers.length)} of {filteredMembers.length} results
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className={`p-2 rounded ${
-                          currentPage === 1
-                            ? 'text-gray-400 cursor-not-allowed'
-                            : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <ChevronLeft size={20} />
-                      </button>
-                      <button
-                        onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredMembers.length / usersPerPage), p + 1))}
-                        disabled={currentPage >= Math.ceil(filteredMembers.length / usersPerPage)}
-                        className={`p-2 rounded ${
-                          currentPage >= Math.ceil(filteredMembers.length / usersPerPage)
-                            ? 'text-gray-400 cursor-not-allowed'
-                            : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <ChevronRight size={20} />
-                      </button>
-                    </div>
+                <div className="mt-6 flex justify-between items-center">
+                  <p className="text-sm text-gray-600">
+                    Showing {Math.min((currentPage - 1) * usersPerPage + 1, filteredMembers.length)} to{' '}
+                    {Math.min(currentPage * usersPerPage, filteredMembers.length)} of {filteredMembers.length} results
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className={`p-2 rounded ${
+                        currentPage === 1
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredMembers.length / usersPerPage), p + 1))}
+                      disabled={currentPage >= Math.ceil(filteredMembers.length / usersPerPage)}
+                      className={`p-2 rounded ${
+                        currentPage >= Math.ceil(filteredMembers.length / usersPerPage)
+                          ? 'text-gray-400 cursor-not-allowed'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <ChevronRight size={20} />
+                    </button>
                   </div>
+                </div>
                 )}
               </>
             )}
@@ -1690,42 +1704,29 @@ const ServiceManagement: React.FC = () => {
 
   // 改进服务数据获取函数，添加错误处理
   useEffect(() => {
+    // Add an async function to fetch services data
     const fetchServicesData = async () => {
-      setLoading(true);
       try {
-        // 获取服务数据
-        console.log('Fetching services data...');
         const servicesResponse = await apiService.services.getGroomingServices();
-        console.log('Received grooming services:', servicesResponse);
-        
-        // 获取日托数据
-        const dayCareResponse = await apiService.services.getDayCareOptions();
-        console.log('Received day care options:', dayCareResponse);
-        
-        // Type-safe 处理服务数据
+        console.log("Fetched grooming services:", servicesResponse);
         if (Array.isArray(servicesResponse)) {
-          setGroomingServices(servicesResponse);
-        } else {
-          console.error('Expected array of services but got:', servicesResponse);
+          setGroomingServices(servicesResponse as GroomingService[]);
         }
         
-        // Type-safe 处理日托数据
-        if (Array.isArray(dayCareResponse)) {
-          setDayCareOptions(dayCareResponse);
-        } else {
-          console.error('Expected array of day care options but got:', dayCareResponse);
+        const optionsResponse = await apiService.services.getDayCareOptions();
+        console.log("Fetched daycare options:", optionsResponse);
+        if (Array.isArray(optionsResponse)) {
+          setDayCareOptions(optionsResponse as DayCareOption[]);
         }
-        
-        setErrorMessage("");
       } catch (error) {
-        console.error('Failed to fetch services data:', error);
-        setErrorMessage("Failed to load services. Please try again.");
-      } finally {
-        setLoading(false);
+        console.error("Failed to fetch services data:", error);
       }
     };
 
+    // Call the function
     fetchServicesData();
+    
+    // Existing code...
   }, []);
 
   // 处理美容服务更新，添加更多日志
@@ -1882,21 +1883,17 @@ const ServiceManagement: React.FC = () => {
             </div>
             
             <div className="mb-4">
-              <label className="block text-gray-700 mb-1">Duration (minutes)</label>
+              <label className="block text-gray-700 mb-1">Duration (hours)</label>
               <input 
                 type="number" 
                 value={editingService.duration} 
                 onChange={(e) => {
-                  const minutes = Number(e.target.value) || 0;
-                  setEditingService({...editingService, duration: minutes});
+                  const hours = Number(e.target.value) || 0;
+                  setEditingService({...editingService, duration: hours});
                 }}
                 className="w-full p-2 border rounded"
-                min="30"
-                max="240"
-                step="15"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">Enter duration in minutes (e.g. 60, 90, 120, etc.)</p>
             </div>
             
             <div className="mb-4">
@@ -2170,21 +2167,21 @@ const ServiceManagement: React.FC = () => {
       
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Grooming Services</h2>
-        <button 
+      <button 
           className="md:px-4 md:py-2 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center"
-          onClick={() => setEditingService({
-            id: `new-${Date.now()}`,
-            name: '',
-            description: '',
-            price: 0,
-            duration: 60,
-            discount: 0,
-            features: [{ text: '' }]
-          })}
-        >
+        onClick={() => setEditingService({
+          id: `new-${Date.now()}`,
+          name: '',
+          description: '',
+          price: 0,
+          duration: 60,
+          discount: 0,
+          features: [{ text: '' }]
+        })}
+      >
           <Plus size={18} className="md:mr-1" /> 
           <span className="hidden md:inline">Add New Service</span>
-        </button>
+      </button>
       </div>
       
       {/* Desktop Table View */}
@@ -2236,7 +2233,7 @@ const ServiceManagement: React.FC = () => {
           </tbody>
         </table>
       </div>
-
+      
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
         {groomingServices.map(service => (
@@ -2249,7 +2246,7 @@ const ServiceManagement: React.FC = () => {
                   <p className="text-sm text-gray-500 mt-1">{service.description}</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <button 
+      <button 
                     className="text-blue-600 hover:text-blue-800"
                     onClick={() => setEditingService(service)}
                   >
@@ -2296,16 +2293,16 @@ const ServiceManagement: React.FC = () => {
         <h2 className="text-2xl font-bold">Day Care Options</h2>
         <button 
           className="md:px-4 md:py-2 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center"
-          onClick={() => setEditingDayCare({
-            type: 'new-option',
-            description: '',
-            price: 0,
-            displayPrice: ''
-          })}
-        >
+        onClick={() => setEditingDayCare({
+          type: 'new-option',
+          description: '',
+          price: 0,
+          displayPrice: ''
+        })}
+      >
           <Plus size={18} className="md:mr-1" /> 
           <span className="hidden md:inline">Add New Option</span>
-        </button>
+      </button>
       </div>
       
       {/* Desktop Table View */}

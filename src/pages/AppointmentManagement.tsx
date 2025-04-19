@@ -3,26 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, Scissors, Dog, Cat, ChevronLeft, User, Home, Bath, Sparkles, Trash2, Edit2, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
-import { Appointment } from '../types';
+import { Appointment, GroomingService, DayCareOption, TimeSlot } from '../types';
 import { convertToMalaysiaTime, formatDateTimeForDisplay } from '../utils/dateUtils';
 
-interface ExtendedAppointment extends Omit<Appointment, 'service' | 'dayCareOptions'> {
+interface ExtendedAppointment extends Omit<Appointment, 'dayCareOptions' | 'serviceType'> {
   petName: string;
-  petType: string;
+  petType: 'dog' | 'cat';
   time: string;
   service: string;
-  serviceType?: 'Basic Grooming' | 'Full Grooming' | 'Spa Treatment';
-  dayCareOptions?: {
-    type: 'daily' | 'longTerm';
-    days: number;
-    morning: boolean;
-    afternoon: boolean;
-    evening: boolean;
-  };
+  serviceType: 'Basic Grooming' | 'Premium Grooming' | 'Spa Treatment';
+  dayCareOptions?: Appointment['dayCareOptions'];
   totalPrice: number;
   ownerName: string;
   ownerPhone: string;
   ownerEmail: string;
+}
+
+interface TimeSlotWithBookings extends TimeSlot {
+  currentBookings: number;
+  available: boolean;
 }
 
 const AppointmentManagement: React.FC = () => {
@@ -36,190 +35,184 @@ const AppointmentManagement: React.FC = () => {
   const [searchTime, setSearchTime] = useState('');
   const [selectedAppointment, setSelectedAppointment] = useState<ExtendedAppointment | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<Partial<ExtendedAppointment>>({
-    petName: '',
-    service: '',
-    date: '',
-    time: '',
-    dayCareOptions: {
-      type: 'daily',
-      days: 1,
-      morning: false,
-      afternoon: false,
-      evening: false
-    },
-    notes: ''
-  });
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<Array<{ time: string; currentBookings: number }>>([]);
+  const [editForm, setEditForm] = useState<Partial<Pick<ExtendedAppointment, 'petName' | 'service' | 'date' | 'time' | 'notes' | 'dayCareOptions'>>>({});
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<Array<TimeSlotWithBookings>>([]);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [expandedPriceDetails, setExpandedPriceDetails] = useState<Record<string, boolean>>({});
+  const [groomingServices, setGroomingServices] = useState<GroomingService[]>([]);
+  const [dayCareOptions, setDayCareOptions] = useState<DayCareOption[]>([]);
 
-  // Add price calculation functions
-  const calculateBasePrice = (serviceType: string): number => {
-    switch (serviceType) {
-      case 'Basic Grooming':
-        return 60;
-      case 'Full Grooming':
-        return 120;
-      case 'Spa Treatment':
-        return 220;
-      default:
-        return 0;
+  const fetchServicesData = async () => {
+    try {
+      const [servicesResponse, dayCareResponse] = await Promise.all([
+        apiService.services.getGroomingServices(),
+        apiService.services.getDayCareOptions()
+      ]);
+      
+      console.log('Fetched grooming services:', servicesResponse);
+      console.log('Fetched daycare options:', dayCareResponse);
+      
+      setGroomingServices(Array.isArray(servicesResponse) ? servicesResponse : []);
+      setDayCareOptions(Array.isArray(dayCareResponse) ? dayCareResponse : []);
+    } catch (error) {
+      console.error('Error fetching services data:', error);
+      setError('Failed to fetch services data');
+      setGroomingServices([]);
+      setDayCareOptions([]);
     }
   };
 
-  const calculateDayCarePrice = (dayCareOptions?: { type: 'daily' | 'longTerm'; days: number; morning?: boolean; afternoon?: boolean; evening?: boolean }): number => {
-    if (!dayCareOptions || 
-        !dayCareOptions.type || 
-        !dayCareOptions.days || 
-        dayCareOptions.days <= 0 ||
-        !(dayCareOptions.morning || dayCareOptions.afternoon || dayCareOptions.evening)) {
+  const calculateBasePrice = (serviceType: string): number => {
+    const mappedServiceType = serviceType === 'Full Grooming' ? 'Premium Grooming' : serviceType;
+    console.log(`[calculateBasePrice] Input: "${serviceType}", Mapped: "${mappedServiceType}"`);
+
+    if (!groomingServices || groomingServices.length === 0) {
+      console.warn(`[calculateBasePrice] Grooming services not loaded. Using fallback for "${mappedServiceType}".`);
+      if (mappedServiceType === 'Premium Grooming') return 140;
+      if (mappedServiceType === 'Basic Grooming') return 70;
+      if (mappedServiceType === 'Spa Treatment') return 220;
+        return 0;
+    }
+
+    const service = groomingServices.find(s => s.name === mappedServiceType);
+    if (!service) {
+      console.warn(`[calculateBasePrice] Service named "${mappedServiceType}" not found. Using fallback.`);
+      if (mappedServiceType === 'Premium Grooming') return 140;
+      if (mappedServiceType === 'Basic Grooming') return 70;
+      if (mappedServiceType === 'Spa Treatment') return 220;
       return 0;
     }
     
-    const dailyRate = dayCareOptions.type === 'daily' ? 50 : 80;
-    return dailyRate * dayCareOptions.days;
+    if (typeof service.price !== 'number' || isNaN(service.price)) {
+      console.error(`[calculateBasePrice] Invalid price for "${mappedServiceType}": ${service.price}. Using fallback.`);
+      if (mappedServiceType === 'Premium Grooming') return 140;
+      if (mappedServiceType === 'Basic Grooming') return 70;
+      if (mappedServiceType === 'Spa Treatment') return 220;
+      return 0;
+    }
+    return service.price;
   };
 
-  const calculateTotalPrice = (serviceType: string, dayCareOptions?: { type: 'daily' | 'longTerm'; days: number; morning?: boolean; afternoon?: boolean; evening?: boolean }): number => {
-    let total = calculateBasePrice(serviceType);
-    
-    // Add day care cost if applicable
-    const dayCarePrice = calculateDayCarePrice(dayCareOptions);
-    total += dayCarePrice;
-    
-    // Apply member discounts ONLY to grooming services (not daycare)
-    if (user) {
-      // Calculate base grooming price without daycare
-      const baseGroomingPrice = calculateBasePrice(serviceType);
-      
-      // Apply discount only to the grooming portion
-      let discountedGroomingPrice = baseGroomingPrice;
-      if (serviceType === 'Spa Treatment') {
-        discountedGroomingPrice = baseGroomingPrice * 0.9; // 10% discount for spa
-      } else if (serviceType === 'Basic Grooming' || serviceType === 'Full Grooming') {
-        discountedGroomingPrice = baseGroomingPrice * 0.92; // 8% discount for basic and full grooming
-      }
-      
-      // Total is discounted grooming price + full daycare price
-      total = discountedGroomingPrice + dayCarePrice;
+  const calculateDayCarePrice = (options?: Appointment['dayCareOptions']): number => {
+    if (!options?.type || !options.days || options.days <= 0) {
+      return 0;
+    }
+    if (!dayCareOptions || dayCareOptions.length === 0) {
+        console.warn(`[calculateDayCarePrice] DayCare options not loaded yet.`);
+        const dailyRate = options.type === 'daily' ? 50 : 80; 
+        return dailyRate * options.days;
     }
 
-    return Math.round(total * 100) / 100; // Round to 2 decimal places
+    const option = dayCareOptions.find(opt => opt.type === options.type);
+    if (!option) {
+      console.warn(`[calculateDayCarePrice] DayCare option type "${options.type}" not found. Using fallback.`);
+       const dailyRate = options.type === 'daily' ? 50 : 80; 
+       return dailyRate * options.days;
+    }
+     if (typeof option.price !== 'number' || isNaN(option.price)) {
+        console.error(`[calculateDayCarePrice] Invalid price for DayCare type "${options.type}": ${option.price}. Using fallback.`);
+         const dailyRate = options.type === 'daily' ? 50 : 80; 
+         return dailyRate * options.days;
+     }
+
+    return option.price * options.days;
   };
 
-  // Update the getAvailableTimesByService function
+  const calculateTotalPrice = (serviceType: string, dayCareOptions?: Appointment['dayCareOptions']): number => {
+    const mappedServiceType = serviceType === 'Full Grooming' ? 'Premium Grooming' : serviceType;
+    const baseGroomingPrice = calculateBasePrice(mappedServiceType);
+    const dayCarePrice = calculateDayCarePrice(dayCareOptions);
+    let total = baseGroomingPrice + dayCarePrice;
+    
+    if (user) {
+        const service = groomingServices.find(s => s.name === mappedServiceType);
+        let discountRate = 8;
+        if (service && typeof service.discount === 'number' && !isNaN(service.discount)) {
+            discountRate = service.discount;
+        } else if (service) {
+          console.warn(`[calculateTotalPrice] Missing or invalid discount for service "${mappedServiceType}", using default ${discountRate}%`);
+        } else {
+             console.warn(`[calculateTotalPrice] Service "${mappedServiceType}" not found for discount calculation, using default ${discountRate}%`);
+        }
+        
+      const discountMultiplier = 1 - (discountRate / 100);
+      total = (baseGroomingPrice * discountMultiplier) + dayCarePrice;
+    }
+
+    console.log(`[calculateTotalPrice] Service: ${mappedServiceType}, Base: ${baseGroomingPrice}, Daycare: ${dayCarePrice}, Total: ${total}`);
+    return Math.round(total * 100) / 100;
+  };
+
   const getAvailableTimesByService = (service: string) => {
     const allTimeSlots = [
       '10:00', '11:00', '12:00', '13:00', '14:00',
       '15:00', '16:00', '17:00', '18:00', '19:00',
       '20:00', '21:00'
     ];
+    const mappedService = service === 'Full Grooming' ? 'Premium Grooming' : service;
 
-    switch (service) {
+    switch (mappedService) {
       case 'Spa Treatment':
-        // Spa Treatment: Available from 10 AM to 6 PM (4-hour service)
         return allTimeSlots.filter(time => {
           const hour = parseInt(time.split(':')[0]);
           return hour >= 10 && hour <= 18;
         });
-      case 'Full Grooming':
-        // Full Grooming: Not available in last 3 hours (until 7 PM)
+      case 'Premium Grooming':
         return allTimeSlots.filter(time => {
           const hour = parseInt(time.split(':')[0]);
           return hour >= 10 && hour <= 19;
         });
       case 'Basic Grooming':
       default:
-        // Basic Grooming: Available all hours
         return allTimeSlots;
     }
   };
 
-  // 获取用户的所有预约
   useEffect(() => {
     const fetchAppointments = async () => {
+      setLoading(true);
       try {
+        await fetchServicesData();
         const response = await apiService.appointments.getAll();
-        console.log('Raw appointments from API:', response); // Debug log
+        console.log('Raw appointments from API:', response);
 
-        // Convert appointments data to match the extended interface
         const extendedAppointments: ExtendedAppointment[] = response
-          .filter(apt => apt.status === 'Completed') // Only keep completed appointments
-          .map(apt => {
-          // Debug log for each appointment
-          console.log('Processing appointment:', {
-            id: apt._id,
-            originalService: apt.serviceType,
-            status: apt.status
-          });
-
-          // Map the service type correctly based on the backend model
-          let mappedService = '';
-          if (apt.serviceType) {
-            mappedService = apt.serviceType;
-          } else if (apt.service) {
-            // Convert service to proper format if needed
-            switch (apt.service.toLowerCase()) {
-              case 'basic':
-              case 'basicgrooming':
-              case 'basic grooming':
-                mappedService = 'Basic Grooming';
-                break;
-              case 'full':
-              case 'fullgrooming':
-              case 'full grooming':
-                mappedService = 'Full Grooming';
-                break;
-              case 'spa':
-              case 'spatreatment':
-              case 'spa treatment':
-                mappedService = 'Spa Treatment';
-                break;
-              default:
-                mappedService = apt.service;
+          .filter(apt => apt.status === 'Completed')
+          .map((apt): ExtendedAppointment => {
+            const originalServiceType = apt.serviceType as string;
+            let calculationServiceType: ExtendedAppointment['serviceType'] = 'Basic Grooming';
+            if (originalServiceType === 'Full Grooming' || originalServiceType === 'Premium Grooming') {
+                calculationServiceType = 'Premium Grooming';
+            } else if (originalServiceType === 'Basic Grooming' || originalServiceType === 'Spa Treatment') {
+                calculationServiceType = originalServiceType;
+            } else {
+                 console.warn(`Unrecognized original service type "${originalServiceType}" for apt ${apt._id}, defaulting to Basic Grooming for calculation.`);
+                 calculationServiceType = 'Basic Grooming';
             }
-          }
+            
+            const serviceData = groomingServices.find(s => s.name === calculationServiceType);
+            const calculatedTotalPrice = calculateTotalPrice(calculationServiceType, apt.dayCareOptions);
 
-          const mappedAppointment = {
+            return {
             ...apt,
             petName: apt.petName || '',
-            petType: apt.petType || '',
+              petType: apt.petType || 'dog',
             time: apt.time || '',
-            service: mappedService,
-            dayCareOptions: apt.dayCareOptions || {
-              type: 'daily',
-              days: 1,
-              morning: false,
-              afternoon: false,
-              evening: false
-            },
-            totalPrice: apt.totalPrice || 0,
+              service: originalServiceType,
+              serviceType: calculationServiceType,
+              dayCareOptions: apt.dayCareOptions,
+              totalPrice: calculatedTotalPrice,
             ownerName: apt.ownerName || '',
             ownerPhone: apt.ownerPhone || '',
             ownerEmail: apt.ownerEmail || ''
           };
-
-          // Debug log for mapped appointment
-          console.log('Mapped appointment:', {
-            id: mappedAppointment._id,
-            service: mappedAppointment.service
-          });
-
-          return mappedAppointment;
-        })
-        // Sort appointments by date (oldest first) and then by time
+          })
         .sort((a, b) => {
-          // Compare dates first
           const dateA = typeof a.date === 'string' ? new Date(a.date) : a.date;
           const dateB = typeof b.date === 'string' ? new Date(b.date) : b.date;
-          
-          // If dates are different, sort by date (oldest first)
           if (dateA.getTime() !== dateB.getTime()) {
             return dateA.getTime() - dateB.getTime();
           }
-          
-          // If dates are the same, sort by time
           return a.time.localeCompare(b.time);
         });
 
@@ -237,7 +230,6 @@ const AppointmentManagement: React.FC = () => {
     fetchAppointments();
   }, []);
 
-  // 处理预约取消
   const handleCancelAppointment = async (appointmentId: string) => {
     try {
       await apiService.appointments.update(appointmentId, { status: 'Cancelled' });
@@ -253,7 +245,6 @@ const AppointmentManagement: React.FC = () => {
     }
   };
 
-  // Toggle price details dropdown
   const togglePriceDetails = (appointmentId: string) => {
     setExpandedPriceDetails(prev => ({
       ...prev,
@@ -261,17 +252,13 @@ const AppointmentManagement: React.FC = () => {
     }));
   };
 
-  // 点击空白处关闭价格详情菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // 如果有打开的价格详情菜单
       const openMenuIds = Object.keys(expandedPriceDetails).filter(id => expandedPriceDetails[id]);
       
       if (openMenuIds.length > 0) {
-        // 检查点击是否在价格详情菜单外
         let clickedOutside = true;
         
-        // 检查是否点击在价格菜单或切换按钮上
         const priceDetails = document.querySelectorAll('.price-details-dropdown');
         const toggleButtons = document.querySelectorAll('.price-toggle-button');
         
@@ -287,58 +274,35 @@ const AppointmentManagement: React.FC = () => {
           }
         });
         
-        // 如果点击在价格菜单外，关闭所有打开的菜单
         if (clickedOutside) {
           setExpandedPriceDetails({});
         }
       }
     };
     
-    // 添加事件监听器
     document.addEventListener('click', handleClickOutside);
     
-    // 清理函数
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
   }, [expandedPriceDetails]);
 
-  // Update handleEditAppointment function
   const handleEditAppointment = (appointment: ExtendedAppointment) => {
-    console.log('Editing appointment:', {
-      id: appointment._id,
-      service: appointment.service,
-      serviceType: appointment.serviceType,
-      date: appointment.date,
-      time: appointment.time,
-      dayCareOptions: appointment.dayCareOptions
-    });
-
-    // Set the selected date
+    console.log('Editing appointment:', appointment);
     const appointmentDate = typeof appointment.date === 'string' ? appointment.date : appointment.date.toISOString().split('T')[0];
     setSelectedDate(appointmentDate);
-
     setSelectedAppointment(appointment);
     setEditForm({
-      petName: appointment.petName || '',
-      service: appointment.service || '',
+      petName: appointment.petName,
+      service: appointment.service,
       date: appointmentDate,
-      time: appointment.time || '',
-      dayCareOptions: appointment.dayCareOptions || {
-        type: 'daily',
-        days: 1,
-        morning: false,
-        afternoon: false,
-        evening: false
-      },
-      notes: appointment.notes || ''
+      time: appointment.time,
+      dayCareOptions: appointment.dayCareOptions,
+      notes: appointment.notes
     });
     setIsEditing(true);
-
-    // The time slots will be updated automatically through the useEffect when service is set
   };
 
-  // Update handleDateChange function to include service type check
   const handleDateChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newDate = e.target.value;
     setSelectedDate(newDate);
@@ -346,66 +310,84 @@ const AppointmentManagement: React.FC = () => {
     
     try {
       const response = await apiService.appointments.getTimeSlots(newDate);
-      const availableTimes = getAvailableTimesByService(editForm.service || '');
+      const serviceForTimes = editForm.service || selectedAppointment?.service || '';
+      const availableTimes = getAvailableTimesByService(serviceForTimes);
       
-      // Filter time slots based on service type and current bookings
-      const filteredTimeSlots = availableTimes.map(time => {
+      const filteredTimeSlots: TimeSlotWithBookings[] = availableTimes.map(time => {
         const existingSlot = response.find(slot => slot.time === time);
         return {
           time,
-          currentBookings: existingSlot ? existingSlot.currentBookings : 0
-        };
+          available: existingSlot?.available ?? true,
+          currentBookings: existingSlot?.currentBookings ?? 0
+        } as TimeSlotWithBookings;
       });
       
       setAvailableTimeSlots(filteredTimeSlots);
     } catch (error) {
       console.error('Error fetching time slots:', error);
-      const availableTimes = getAvailableTimesByService(editForm.service || '');
-      setAvailableTimeSlots(availableTimes.map(time => ({ time, currentBookings: 0 })));
+      const serviceForTimes = editForm.service || selectedAppointment?.service || '';
+      const availableTimes = getAvailableTimesByService(serviceForTimes);
+      setAvailableTimeSlots(availableTimes.map(time => ({ 
+        time, 
+        available: true, 
+        currentBookings: 0 
+      })));
     }
   };
 
-  // 处理编辑表单提交
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAppointment) return;
 
     try {
-      const serviceType = editForm.service as 'Basic Grooming' | 'Full Grooming' | 'Spa Treatment';
+      const serviceNameForCalc = editForm.service === 'Full Grooming' ? 'Premium Grooming' : editForm.service;
       const newTotalPrice = calculateTotalPrice(
-        serviceType,
+        serviceNameForCalc || '',
         editForm.dayCareOptions
       );
 
-      const updatedData = {
-        serviceType,
+      const serviceData = groomingServices.find(s => s.name === serviceNameForCalc);
+      if (!serviceData && editForm.service) {
+          throw new Error(`Could not find service data for ${serviceNameForCalc} during edit submit.`);
+      }
+
+      const updatedData: Partial<Appointment> = {
+        petName: editForm.petName,
+        serviceId: serviceData?.id,
         notes: editForm.notes,
         dayCareOptions: editForm.dayCareOptions,
         totalPrice: newTotalPrice,
         date: editForm.date || '',
-        time: editForm.time || ''
+        time: editForm.time || '',
+        ownerName: selectedAppointment.ownerName,
+        ownerPhone: selectedAppointment.ownerPhone,
+        ownerEmail: selectedAppointment.ownerEmail,
+        status: selectedAppointment.status 
       };
+      
+      Object.keys(updatedData).forEach(key => updatedData[key] === undefined && delete updatedData[key]);
 
-      const updatedAppointment = await apiService.appointments.update(
+      const responseAppointment = await apiService.appointments.update(
         selectedAppointment._id!,
         updatedData
       );
 
-      // Update the local state with the new data
-      setAppointments(prevAppointments => 
+      const updateAppointments = (prevAppointments: ExtendedAppointment[]) => 
         prevAppointments.map(apt =>
           apt._id === selectedAppointment._id
             ? {
                 ...apt,
-                ...updatedAppointment,
-                service: updatedAppointment.serviceType || updatedAppointment.service || '',
-                totalPrice: newTotalPrice,
-                date: updatedAppointment.date || '',
-                time: updatedAppointment.time || ''
+                ...responseAppointment,
+                petType: responseAppointment.petType || apt.petType,
+                service: responseAppointment.serviceType || '',
+                serviceType: (responseAppointment.serviceType === 'Full Grooming' ? 'Premium Grooming' : responseAppointment.serviceType) as ExtendedAppointment['serviceType'],
+                totalPrice: responseAppointment.totalPrice ?? newTotalPrice,
               }
             : apt
-        )
       );
+
+      setAppointments(updateAppointments);
+      setFilteredAppointments(updateAppointments);
       
       setIsEditing(false);
       setSelectedAppointment(null);
@@ -415,72 +397,41 @@ const AppointmentManagement: React.FC = () => {
     }
   };
 
-  // Add price preview to the edit form
   const [previewPrice, setPreviewPrice] = useState<number>(0);
 
-  // Update preview price when service type changes
   useEffect(() => {
     if (editForm.service) {
+      const serviceNameForCalc = editForm.service === 'Full Grooming' ? 'Premium Grooming' : editForm.service;
       const newPrice = calculateTotalPrice(
-        editForm.service,
+        serviceNameForCalc || '',
         editForm.dayCareOptions
       );
       setPreviewPrice(newPrice);
     }
   }, [editForm.service, editForm.dayCareOptions]);
 
-  // 格式化日期和时间
   const formatDateTime = (date: Date | string, time?: string) => {
-    // 如果date是Date对象，且有utcDateTime字段，使用utcDateTime
-    if (selectedAppointment?.utcDateTime) {
-      const malaysiaTime = convertToMalaysiaTime(String(selectedAppointment.utcDateTime));
-      return `${malaysiaTime.date} ${malaysiaTime.time}`;
-    }
-    
-    // 否则尝试使用date和time
-    try {
       if (typeof date === 'string' && time) {
-        // 如果提供了字符串日期和时间
         return formatDateTimeForDisplay(date, time);
       } else if (date instanceof Date) {
-        // 如果是Date对象
-        const dateStr = date.toISOString().split('T')[0]; // 提取YYYY-MM-DD
-        const timeStr = time || date.toTimeString().substring(0, 5); // 使用提供的时间或Date对象的时间
+      const dateStr = date.toISOString().split('T')[0]; 
+      const timeStr = time || date.toTimeString().substring(0, 5);
         return formatDateTimeForDisplay(dateStr, timeStr);
       }
-    } catch (error) {
-      console.error('Error formatting date time:', error);
-    }
-    
-    // 回退方案
-    if (date instanceof Date) {
-      return time ? `${date.toLocaleDateString()} at ${time}` : date.toLocaleString();
-    }
-    
-    return time ? `${date} at ${time}` : String(date);
+    return String(date);
   };
 
-  // 获取服务图标
   const getServiceIcon = (serviceType: string | undefined) => {
-    if (!serviceType) {
-      return <Scissors className="w-4 h-4 text-gray-500" />;
-    }
-    
-    switch (serviceType) {
-      case 'Basic Grooming':
-        return <Scissors className="w-4 h-4 text-gray-500" />;
-      case 'Full Grooming':
-        return <Sparkles className="w-4 h-4 text-gray-500" />;
-      case 'Spa Treatment':
-        return <Bath className="w-4 h-4 text-gray-500" />;
-      case 'Pet DayCare':
-        return <Home className="w-4 h-4 text-gray-500" />;
-      default:
-        return <Scissors className="w-4 h-4 text-gray-500" />;
+    const displayType = serviceType === 'Full Grooming' ? 'Premium Grooming' : serviceType;
+    switch (displayType) {
+      case 'Basic Grooming': return <Scissors className="w-4 h-4 text-gray-500" />;
+      case 'Premium Grooming': return <Sparkles className="w-4 h-4 text-gray-500" />;
+      case 'Spa Treatment': return <Bath className="w-4 h-4 text-gray-500" />;
+      case 'Pet DayCare': return <Home className="w-4 h-4 text-gray-500" />;
+      default: return <Scissors className="w-4 h-4 text-gray-500" />;
     }
   };
 
-  // 获取状态样式
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'confirmed':
@@ -494,14 +445,12 @@ const AppointmentManagement: React.FC = () => {
     }
   };
 
-  // Add effect to update time slots when service changes
   useEffect(() => {
     if (editForm.date && editForm.service) {
       handleDateChange({ target: { value: editForm.date } } as React.ChangeEvent<HTMLInputElement>);
     }
   }, [editForm.service]);
 
-  // Add function to handle filtering by date and time
   const handleSearch = () => {
     if (!searchDate && !searchTime) {
       setFilteredAppointments(appointments);
@@ -509,15 +458,12 @@ const AppointmentManagement: React.FC = () => {
     }
 
     const filtered = appointments.filter(appointment => {
-      // Get appointment date in consistent format
       const appointmentDate = typeof appointment.date === 'string' 
         ? appointment.date 
         : appointment.date.toISOString().split('T')[0];
       
-      // Check if date matches
       const dateMatches = !searchDate || appointmentDate.includes(searchDate);
       
-      // Check if time matches
       const timeMatches = !searchTime || appointment.time.includes(searchTime);
       
       return dateMatches && timeMatches;
@@ -526,7 +472,6 @@ const AppointmentManagement: React.FC = () => {
     setFilteredAppointments(filtered);
   };
 
-  // Reset filter
   const resetSearch = () => {
     setSearchDate('');
     setSearchTime('');
@@ -543,7 +488,6 @@ const AppointmentManagement: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 顶部导航栏 */}
       <div className="fixed top-0 left-0 right-0 bg-white shadow-md z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between md:justify-between">
@@ -560,13 +504,11 @@ const AppointmentManagement: React.FC = () => {
               Appointment History
             </h1>
             <div className="w-6 md:w-32">
-              {/* 这个空的 div 用来平衡布局 */}
             </div>
           </div>
         </div>
       </div>
 
-      {/* 主要内容区域 */}
       <div className="container mx-auto px-4 pt-20 pb-8">
         {error && (
           <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
@@ -574,7 +516,6 @@ const AppointmentManagement: React.FC = () => {
           </div>
         )}
 
-        {/* Add search functionality */}
         <div className="mb-6 p-4 bg-white rounded-lg shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -688,7 +629,7 @@ const AppointmentManagement: React.FC = () => {
                       <div className="flex items-center mt-1">
                         {getServiceIcon(appointment.service)}
                         <p className="text-sm font-medium ml-2">
-                          {appointment.service || appointment.serviceType || "Not specified"}
+                          {appointment.service === 'Full Grooming' ? 'Premium Grooming' : appointment.service}
                         </p>
                       </div>
                     </div>
@@ -730,16 +671,9 @@ const AppointmentManagement: React.FC = () => {
                       <div className="flex items-center mt-1">
                         <Home className="w-4 h-4 text-gray-500" />
                         <p className="text-sm font-medium ml-2">
-                          {appointment.dayCareOptions && 
-                           appointment.dayCareOptions.type && 
-                           appointment.dayCareOptions.days && 
-                           appointment.dayCareOptions.days > 0 && 
-                           (appointment.dayCareOptions.morning || 
-                            appointment.dayCareOptions.afternoon || 
-                            appointment.dayCareOptions.evening) ? 
+                          {appointment.dayCareOptions?.type ? 
                             `${appointment.dayCareOptions.type === 'daily' ? 'Daily Care' : 'Long Term Care'}${appointment.dayCareOptions.days > 1 ? ` (${appointment.dayCareOptions.days} days)` : ''}` : 
-                            'No'
-                          }
+                            'No'}
                         </p>
                       </div>
                     </div>
@@ -749,7 +683,7 @@ const AppointmentManagement: React.FC = () => {
                       <div className="relative">
                         <div className="flex items-center">
                           <p className="text-lg font-bold text-gray-900">
-                            RM {Number(appointment.totalPrice).toFixed(2)}
+                            RM {appointment.totalPrice.toFixed(2)}
                           </p>
                           <button 
                             type="button"
@@ -772,24 +706,18 @@ const AppointmentManagement: React.FC = () => {
                             <div className="flex justify-between text-xs">
                               <span className="text-gray-600">Service:</span>
                               <span className="text-gray-800">
-                                RM {calculateBasePrice(appointment.service)}
+                                RM {calculateBasePrice(appointment.serviceType).toFixed(2)}
                               </span>
                             </div>
                             
-                            {appointment.dayCareOptions && 
-                             appointment.dayCareOptions.type && 
-                             appointment.dayCareOptions.days && 
-                             appointment.dayCareOptions.days > 0 &&
-                             (appointment.dayCareOptions.morning || 
-                              appointment.dayCareOptions.afternoon || 
-                              appointment.dayCareOptions.evening) && (
+                            {appointment.dayCareOptions?.type && (
                               <div className="flex justify-between text-xs">
                                 <span className="text-gray-600">
                                   Day Care ({appointment.dayCareOptions.type === 'daily' ? 'Daily' : 'Long Term'}
                                   {appointment.dayCareOptions.type === 'longTerm' ? ` ${appointment.dayCareOptions.days} days` : ''}):
                                 </span>
                                 <span className="text-gray-800">
-                                  RM {calculateDayCarePrice(appointment.dayCareOptions)}
+                                  RM {calculateDayCarePrice(appointment.dayCareOptions).toFixed(2)}
                                 </span>
                               </div>
                             )}
@@ -800,12 +728,16 @@ const AppointmentManagement: React.FC = () => {
                                   Member Discount (Grooming Only):
                                 </span>
                                 <span className="text-rose-600">
-                                  -RM {(
-                                    calculateBasePrice(appointment.service) - 
-                                    (appointment.service === 'Spa Treatment' ? 
-                                      calculateBasePrice(appointment.service) * 0.9 : 
-                                      calculateBasePrice(appointment.service) * 0.92)
-                                  ).toFixed(2)}
+                                  -RM {(() => {
+                                    const basePrice = calculateBasePrice(appointment.serviceType);
+                                    const service = groomingServices.find(s => s.name === appointment.serviceType);
+                                    let discountRate = 8; 
+                                    if (service && typeof service.discount === 'number' && !isNaN(service.discount)) {
+                                      discountRate = service.discount;
+                                    }
+                                    const discountAmount = (basePrice * discountRate) / 100;
+                                    return discountAmount.toFixed(2);
+                                  })()}
                                 </span>
                               </div>
                             )}
@@ -813,7 +745,7 @@ const AppointmentManagement: React.FC = () => {
                             <div className="flex justify-between text-xs font-medium pt-1 border-t border-gray-100">
                               <span className="text-gray-800">Total:</span>
                               <span className="text-gray-900 font-bold">
-                                RM {Number(appointment.totalPrice).toFixed(2)}
+                                RM {appointment.totalPrice.toFixed(2)}
                               </span>
                             </div>
                           </div>
@@ -824,7 +756,6 @@ const AppointmentManagement: React.FC = () => {
                 </div>
 
                 <div className="px-5 py-4 bg-gray-50 flex justify-end space-x-3">
-                  {/* Edit and Cancel buttons removed - users can no longer modify appointments themselves */}
                 </div>
               </div>
             ))}
@@ -832,7 +763,6 @@ const AppointmentManagement: React.FC = () => {
         )}
       </div>
 
-      {/* 编辑预约模态框 */}
       {isEditing && selectedAppointment && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -856,13 +786,19 @@ const AppointmentManagement: React.FC = () => {
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-rose-500 focus:ring-rose-500"
                 >
                   <option value="">Select a service</option>
+                  {groomingServices.length > 0 ? 
+                   groomingServices.map(service => (
+                     <option key={service.id} value={service.name}>{service.name}</option>
+                   )) : (
+                     <>
                   <option value="Basic Grooming">Basic Grooming</option>
-                  <option value="Full Grooming">Full Grooming</option>
+                       <option value="Premium Grooming">Premium Grooming</option>
                   <option value="Spa Treatment">Spa Treatment</option>
+                     </>
+                   )}
                 </select>
               </div>
 
-              {/* Add Date Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700">Date</label>
                 <input

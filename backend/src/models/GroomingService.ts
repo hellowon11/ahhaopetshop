@@ -20,14 +20,6 @@ export interface IGroomingService extends Document {
   capacityLimit: number;    // 容量限制
 }
 
-// 日托选项接口
-export interface IDayCareOption extends Document {
-  type: string;            // 日托类型 (daily, longTerm)
-  price: number;           // 价格（不含RM符号，纯数字）
-  displayPrice: string;    // 显示价格（包含RM符号）
-  description: string;     // 描述
-}
-
 // 创建服务模型
 const GroomingServiceSchema: Schema = new Schema({
   id: { type: String, required: true, unique: true },
@@ -45,13 +37,4 @@ const GroomingServiceSchema: Schema = new Schema({
   capacityLimit: { type: Number, default: 5 }
 });
 
-// 创建日托选项模型
-const DayCareOptionSchema: Schema = new Schema({
-  type: { type: String, required: true, unique: true },
-  price: { type: Number, required: true },
-  displayPrice: { type: String, required: true },
-  description: { type: String, required: true }
-});
-
-export const GroomingService = mongoose.model<IGroomingService>('GroomingService', GroomingServiceSchema);
-export const DayCareOption = mongoose.model<IDayCareOption>('DayCareOption', DayCareOptionSchema); 
+export const GroomingService = mongoose.model<IGroomingService>('GroomingService', GroomingServiceSchema); 

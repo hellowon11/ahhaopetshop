@@ -27,28 +27,30 @@ export interface TimeSlot {
 }
 
 export interface Appointment {
-  _id?: string;
-  id?: string;
-  userId?: string;
+  _id: string;
+  user?: string;
   petName: string;
-  petType: string;
-  date: string | Date;
+  petType: 'dog' | 'cat';
+  date: string;
   time: string;
-  service?: string;
-  serviceType?: string;
-  notes?: string;
-  ownerName?: string;
-  ownerPhone?: string;
-  ownerEmail?: string;
-  status?: string;
-  totalPrice?: number;
+  utcDateTime?: string;
+  serviceType: string;
+  duration: number;
   dayCareOptions?: {
     type: 'daily' | 'longTerm';
-    days: number;
-    morning?: boolean;
-    afternoon?: boolean;
-    evening?: boolean;
-  } | null;
+    days?: number;
+  };
+  totalPrice: number;
+  basePrice: number;
+  discount: number;
+  dayCarePrice: number;
+  ownerName: string;
+  ownerPhone: string;
+  ownerEmail: string;
+  notes?: string;
+  status: 'Booked' | 'Completed' | 'Cancelled';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ShopPet {

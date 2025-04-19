@@ -4,6 +4,8 @@ import { User } from '../models/User';
 import { auth } from '../middleware/auth';
 import mongoose, { Document } from 'mongoose';
 import { AppointmentSettings } from '../models/AppointmentSettings';
+import { GroomingService } from '../models/GroomingService';
+import { DayCareOption } from '../models/DayCareOption';
 
 interface AuthRequest extends Request {
   user?: {
@@ -144,41 +146,35 @@ router.post('/', async (req: Request, res: Response) => {
       date,
       time,
       utcDateTime,
-      serviceType,
+      serviceId, // 只使用 serviceId
       dayCareOptions,
       ownerName,
       ownerPhone,
       ownerEmail,
       notes,
-      duration,
-      user: userId // 重命名接收的用户ID
+      user: userId
     } = req.body;
     
     // 验证必填字段
-    if (!petName || !petType || !date || !time || !serviceType || !ownerName || !ownerPhone || !ownerEmail || !duration) {
+    if (!petName || !petType || !date || !time || !serviceId || !ownerName || !ownerPhone || !ownerEmail) {
       return res.status(400).json({ message: 'Please provide all required information' });
     }
 
-    // 标准化服务类型名称
-    let normalizedServiceType = serviceType;
-    console.log('原始服务类型:', serviceType);
-    
-    // 规范化服务类型
-    if (typeof serviceType === 'string') {
-      if (serviceType.includes('Premium') || serviceType.toLowerCase().includes('full')) {
-        normalizedServiceType = 'Full Grooming';
-      } else if (serviceType.includes('Spa') || serviceType.toLowerCase().includes('spa')) {
-        normalizedServiceType = 'Spa Treatment';
-      } else {
-        normalizedServiceType = 'Basic Grooming';
-      }
+    // 从数据库获取最新的美容服务信息
+    const groomingService = await GroomingService.findById(serviceId);
+    if (!groomingService) {
+      return res.status(400).json({ message: `Service with ID ${serviceId} not found in our system` });
     }
-    
-    console.log('规范化后的服务类型:', normalizedServiceType);
+
+    console.log('Found grooming service:', groomingService);
+
+    // 使用服务定义中的 duration
+    const duration = groomingService.duration;
+    console.log(`Using duration from service definition: ${duration}`);
 
     // 获取系统配置的最大预约数
     const settings = await AppointmentSettings.findOne({ settingName: 'default' });
-    const maxBookings = settings?.maxBookingsPerTimeSlot || 5; // 如果没有设置，默认为5
+    const maxBookings = settings?.maxBookingsPerTimeSlot || 5;
 
     // 获取预约的开始时间（小时）
     const startHour = parseInt(time.split(':')[0]);
@@ -213,38 +209,38 @@ router.post('/', async (req: Request, res: Response) => {
       }
     }
 
-    // 计算价格
-    let totalPrice = 0;
-    switch (normalizedServiceType) {
-      case 'Basic Grooming':
-        totalPrice = 60;
-        break;
-      case 'Full Grooming':
-        totalPrice = 120;
-        break;
-      case 'Spa Treatment':
-        totalPrice = 220;
-        break;
-    }
+    // 计算美容服务基础价格
+    let groomingPrice = groomingService.price;
+    let dayCarePrice = 0;
+    console.log(`Base grooming price for ${groomingService.name}: ${groomingPrice}`);
 
-    // 如果有日托服务，添加日托费用
+    // 如果有日托服务，从数据库获取日托价格
     if (dayCareOptions) {
+      const dayCareOption = await DayCareOption.findOne({ type: dayCareOptions.type });
+      if (!dayCareOption) {
+        return res.status(400).json({ message: `Day care option ${dayCareOptions.type} not found` });
+      }
+
       if (dayCareOptions.type === 'daily') {
-        totalPrice += 50;
+        dayCarePrice = dayCareOption.price;
+        console.log(`Added daily daycare price: ${dayCarePrice}`);
       } else if (dayCareOptions.type === 'longTerm' && typeof dayCareOptions.days === 'number') {
-        totalPrice += dayCareOptions.days * 80;
+        dayCarePrice = dayCareOptions.days * dayCareOption.price;
+        console.log(`Added long-term daycare price: ${dayCareOptions.days} days * ${dayCareOption.price} = ${dayCarePrice}`);
       }
     }
 
-    // 检查是否是会员并应用折扣
+    // 检查是否是会员并只对美容服务应用折扣
     const memberUser = await User.findOne({ email: ownerEmail });
     if (memberUser) {
-      if (normalizedServiceType === 'Spa Treatment') {
-        totalPrice *= 0.9; // 10% discount for Spa
-      } else if (normalizedServiceType === 'Basic Grooming' || normalizedServiceType === 'Full Grooming') {
-        totalPrice *= 0.92; // 8% discount for Basic and Full Grooming
-      }
+      const discountMultiplier = (100 - groomingService.discount) / 100;
+      groomingPrice *= discountMultiplier;
+      console.log(`Applied member discount ${groomingService.discount}% to grooming service: ${groomingPrice}`);
     }
+
+    // 计算总价（美容服务折扣价 + 日托原价）
+    const totalPrice = groomingPrice + dayCarePrice;
+    console.log(`Total price = Grooming(${groomingPrice}) + DayCare(${dayCarePrice}) = ${totalPrice}`);
 
     // 创建预约对象
     const appointmentData: any = {
@@ -252,10 +248,14 @@ router.post('/', async (req: Request, res: Response) => {
       petType,
       date,
       time,
-      serviceType: normalizedServiceType,
-      duration,
+      serviceId: groomingService._id,
+      serviceType: groomingService.name, // 使用服务的实际名称
+      duration: groomingService.duration,
       dayCareOptions,
-      totalPrice,
+      totalPrice: Math.round(totalPrice * 100) / 100,
+      basePrice: groomingService.price,
+      discount: memberUser ? groomingService.discount : 0,
+      dayCarePrice: Math.round(dayCarePrice * 100) / 100,
       ownerName,
       ownerPhone,
       ownerEmail,
@@ -275,7 +275,6 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     const appointment = new Appointment(appointmentData);
-
     const savedAppointment = await appointment.save();
     console.log('Appointment saved successfully:', savedAppointment);
     res.status(201).json(savedAppointment);
@@ -289,14 +288,14 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/:id', auth, async (req: AuthRequest, res: Response) => {
   try {
     console.log('Updating appointment, ID:', req.params.id);
-    console.log('Update data:', req.body);
+    console.log('Update data:', JSON.stringify(req.body));
     
     const {
       petName,
       petType,
       date,
       time,
-      serviceType,
+      serviceId,
       dayCareOptions,
       ownerName,
       ownerPhone,
@@ -305,21 +304,77 @@ router.put('/:id', auth, async (req: AuthRequest, res: Response) => {
       status
     } = req.body;
     
-    const appointment = await Appointment.findOneAndUpdate(
-      { _id: req.params.id, user: req.user?.id },
-      {
+    // 验证必填字段
+    if (!serviceId) {
+      return res.status(400).json({ message: 'Service ID is required' });
+    }
+
+    // 从数据库获取最新的美容服务信息
+    const groomingService = await GroomingService.findById(serviceId);
+    if (!groomingService) {
+      return res.status(400).json({ message: `Service with ID ${serviceId} not found in our system` });
+    }
+
+    console.log('Found grooming service:', JSON.stringify(groomingService));
+
+    // 计算美容服务基础价格
+    let groomingPrice = groomingService.price;
+    let dayCarePrice = 0;
+    console.log(`Base grooming price for ${groomingService.name}: ${groomingPrice}`);
+
+    // 如果有日托服务，从数据库获取日托价格
+    if (dayCareOptions) {
+      const dayCareOption = await DayCareOption.findOne({ type: dayCareOptions.type });
+      if (!dayCareOption) {
+        return res.status(400).json({ message: `Day care option ${dayCareOptions.type} not found` });
+      }
+
+      if (dayCareOptions.type === 'daily') {
+        dayCarePrice = dayCareOption.price;
+        console.log(`Added daily daycare price: ${dayCarePrice}`);
+      } else if (dayCareOptions.type === 'longTerm' && typeof dayCareOptions.days === 'number') {
+        dayCarePrice = dayCareOptions.days * dayCareOption.price;
+        console.log(`Added long-term daycare price: ${dayCareOptions.days} days * ${dayCareOption.price} = ${dayCarePrice}`);
+      }
+    }
+
+    // 检查是否是会员并只对美容服务应用折扣
+    const memberUser = await User.findOne({ email: ownerEmail });
+    if (memberUser) {
+      const discountMultiplier = (100 - groomingService.discount) / 100;
+      groomingPrice *= discountMultiplier;
+      console.log(`Applied member discount ${groomingService.discount}% to grooming service: ${groomingPrice}`);
+    }
+
+    // 计算总价（美容服务折扣价 + 日托原价）
+    const totalPrice = groomingPrice + dayCarePrice;
+    console.log(`Total price = Grooming(${groomingPrice}) + DayCare(${dayCarePrice}) = ${totalPrice}`);
+    
+    const updateData = {
         petName,
         petType,
         date,
         time,
-        serviceType,
+      serviceId: groomingService._id,
+      serviceType: groomingService.name,
+      duration: groomingService.duration,
         dayCareOptions,
+      totalPrice: Math.round(totalPrice * 100) / 100,
+      basePrice: groomingService.price,
+      discount: memberUser ? groomingService.discount : 0,
+      dayCarePrice: Math.round(dayCarePrice * 100) / 100,
         ownerName,
         ownerPhone,
         ownerEmail,
         notes,
         status
-      },
+    };
+
+    console.log('Updating appointment with data:', JSON.stringify(updateData));
+
+    const appointment = await Appointment.findOneAndUpdate(
+      { _id: req.params.id, user: req.user?.id },
+      updateData,
       { new: true }
     );
 
@@ -327,7 +382,7 @@ router.put('/:id', auth, async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: 'Appointment not found or unauthorized' });
     }
 
-    console.log('Appointment updated successfully:', appointment);
+    console.log('Appointment updated successfully:', JSON.stringify(appointment));
     res.json(appointment);
   } catch (error) {
     console.error('Failed to update appointment:', error);
@@ -366,37 +421,31 @@ router.post('/guest', async (req: Request, res: Response) => {
       date,
       time,
       utcDateTime,
-      serviceType,
+      serviceId, // 只使用 serviceId
       dayCareOptions,
       ownerName,
       ownerPhone,
       ownerEmail,
       notes,
-      duration,
       userId
     } = req.body;
     
     // 验证必填字段
-    if (!petName || !petType || !date || !time || !serviceType || !ownerName || !ownerPhone || !ownerEmail || !duration) {
+    if (!petName || !petType || !date || !time || !serviceId || !ownerName || !ownerPhone || !ownerEmail) {
       return res.status(400).json({ message: 'Please provide all required information' });
     }
 
-    // 标准化服务类型名称
-    let normalizedServiceType = serviceType;
-    console.log('原始服务类型:', serviceType);
-    
-    // 规范化服务类型
-    if (typeof serviceType === 'string') {
-      if (serviceType.includes('Premium') || serviceType.toLowerCase().includes('full')) {
-        normalizedServiceType = 'Full Grooming';
-      } else if (serviceType.includes('Spa') || serviceType.toLowerCase().includes('spa')) {
-        normalizedServiceType = 'Spa Treatment';
-      } else {
-        normalizedServiceType = 'Basic Grooming';
-      }
+    // 从数据库获取最新的美容服务信息
+    const groomingService = await GroomingService.findById(serviceId);
+    if (!groomingService) {
+      return res.status(400).json({ message: `Service with ID ${serviceId} not found in our system` });
     }
-    
-    console.log('规范化后的服务类型:', normalizedServiceType);
+
+    console.log('Found grooming service:', groomingService);
+
+    // 使用服务定义中的 duration
+    const duration = groomingService.duration;
+    console.log(`Using duration from service definition: ${duration}`);
 
     // 获取预约的开始时间（小时）
     const startHour = parseInt(time.split(':')[0]);
@@ -431,49 +480,53 @@ router.post('/guest', async (req: Request, res: Response) => {
       }
     }
 
-    // 计算价格
-    let totalPrice = 0;
-    switch (normalizedServiceType) {
-      case 'Basic Grooming':
-        totalPrice = 60;
-        break;
-      case 'Full Grooming':
-        totalPrice = 120;
-        break;
-      case 'Spa Treatment':
-        totalPrice = 220;
-        break;
-    }
+    // 计算美容服务基础价格
+    let groomingPrice = groomingService.price;
+    let dayCarePrice = 0;
+    console.log(`Base grooming price for ${groomingService.name}: ${groomingPrice}`);
 
-    // 如果有日托服务，添加日托费用
+    // 如果有日托服务，从数据库获取日托价格
     if (dayCareOptions) {
+      const dayCareOption = await DayCareOption.findOne({ type: dayCareOptions.type });
+      if (!dayCareOption) {
+        return res.status(400).json({ message: `Day care option ${dayCareOptions.type} not found` });
+      }
+
       if (dayCareOptions.type === 'daily') {
-        totalPrice += 50;
+        dayCarePrice = dayCareOption.price;
+        console.log(`Added daily daycare price: ${dayCarePrice}`);
       } else if (dayCareOptions.type === 'longTerm' && typeof dayCareOptions.days === 'number') {
-        totalPrice += dayCareOptions.days * 80;
+        dayCarePrice = dayCareOptions.days * dayCareOption.price;
+        console.log(`Added long-term daycare price: ${dayCareOptions.days} days * ${dayCareOption.price} = ${dayCarePrice}`);
       }
     }
 
-    // 检查是否是会员并应用折扣
+    // 检查是否是会员并只对美容服务应用折扣
     const user = await User.findOne({ email: ownerEmail });
     if (user) {
-      if (normalizedServiceType === 'Spa Treatment') {
-        totalPrice *= 0.9; // 10% discount for Spa
-      } else if (normalizedServiceType === 'Basic Grooming' || normalizedServiceType === 'Full Grooming') {
-        totalPrice *= 0.92; // 8% discount for Basic and Full Grooming
-      }
+      const discountMultiplier = (100 - groomingService.discount) / 100;
+      groomingPrice *= discountMultiplier;
+      console.log(`Applied member discount ${groomingService.discount}% to grooming service: ${groomingPrice}`);
     }
 
-    // 创建预约对象 - 如果提供了userId则关联用户
+    // 计算总价（美容服务折扣价 + 日托原价）
+    const totalPrice = groomingPrice + dayCarePrice;
+    console.log(`Total price = Grooming(${groomingPrice}) + DayCare(${dayCarePrice}) = ${totalPrice}`);
+
+    // 创建预约对象
     const appointmentData: any = {
       petName,
       petType,
       date,
       time,
-      serviceType: normalizedServiceType,
-      duration,
+      serviceId: groomingService._id,
+      serviceType: groomingService.name, // 使用服务的实际名称
+      duration: groomingService.duration,
       dayCareOptions,
-      totalPrice,
+      totalPrice: Math.round(totalPrice * 100) / 100,
+      basePrice: groomingService.price,
+      discount: user ? groomingService.discount : 0,
+      dayCarePrice: Math.round(dayCarePrice * 100) / 100,
       ownerName,
       ownerPhone,
       ownerEmail,
@@ -492,7 +545,6 @@ router.post('/guest', async (req: Request, res: Response) => {
     }
 
     const appointment = new Appointment(appointmentData);
-
     const savedAppointment = await appointment.save();
     console.log('Guest appointment saved successfully:', savedAppointment);
     res.status(201).json(savedAppointment);

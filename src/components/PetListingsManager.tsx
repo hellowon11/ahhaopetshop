@@ -857,25 +857,25 @@ const PetListingsManager: React.FC<PetListingsManagerProps> = ({ onClose }) => {
         <>
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-hidden shadow-md rounded-lg border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Basic Info</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedPets.length > 0 ? (
-                  paginatedPets.map(pet => (
-                    <tr key={pet._id} className={pet.status === 'Sold' ? 'bg-yellow-50' : ''}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {pet.petId}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-100">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Basic Info</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {paginatedPets.length > 0 ? (
+                paginatedPets.map(pet => (
+                  <tr key={pet._id} className={pet.status === 'Sold' ? 'bg-yellow-50' : ''}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {pet.petId}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-16 w-16 rounded-md overflow-hidden bg-gray-100">
                           <img 
                             src={getImageUrl(pet.imageUrl)} 
                             alt={pet.name} 
@@ -885,86 +885,86 @@ const PetListingsManager: React.FC<PetListingsManagerProps> = ({ onClose }) => {
                               target.src = '/default-pet-image.png';
                             }}
                           />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-gray-900">{pet.name}</span>
+                        <span className="text-sm text-gray-500">{pet.breed}</span>
+                        <div className="mt-1 flex items-center space-x-2">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            pet.type === 'dog' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {pet.type === 'dog' ? 'Dog' : 'Cat'}
+                          </span>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            pet.gender === 'Male' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
+                          }`}>
+                            {pet.gender === 'Male' ? 'Male' : 'Female'}
+                          </span>
+                          <span className="text-xs text-gray-500">{pet.age}</span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-900">{pet.name}</span>
-                          <span className="text-sm text-gray-500">{pet.breed}</span>
-                          <div className="mt-1 flex items-center space-x-2">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              pet.type === 'dog' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                            }`}>
-                              {pet.type === 'dog' ? 'Dog' : 'Cat'}
-                            </span>
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              pet.gender === 'Male' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
-                            }`}>
-                              {pet.gender === 'Male' ? 'Male' : 'Female'}
-                            </span>
-                            <span className="text-xs text-gray-500">{pet.age}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          onClick={() => toggleSaleStatus(pet.petId, pet.status || 'Listed')}
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                            pet.status === 'Listed' || pet.status === undefined
-                              ? 'bg-green-100 text-green-800 hover:bg-green-200' 
-                              : pet.status === 'Unlisted'
-                                ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                                : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                          }`}
-                        >
-                          {(pet.status === 'Listed' || pet.status === undefined) ? (
-                            <>
-                              <CheckCircle size={16} className="mr-1" />
-                              Listed
-                            </>
-                          ) : pet.status === 'Unlisted' ? (
-                            <>
-                              <XCircle size={16} className="mr-1" />
-                              Unlisted
-                            </>
-                          ) : (
-                            <>
-                              <svg className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                              </svg>
-                              Sold
-                            </>
-                          )}
-                        </button>
-                      </td>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => toggleSaleStatus(pet.petId, pet.status || 'Listed')}
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                          pet.status === 'Listed' || pet.status === undefined
+                            ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                            : pet.status === 'Unlisted'
+                              ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                        }`}
+                      >
+                        {(pet.status === 'Listed' || pet.status === undefined) ? (
+                          <>
+                            <CheckCircle size={16} className="mr-1" />
+                            Listed
+                          </>
+                        ) : pet.status === 'Unlisted' ? (
+                          <>
+                            <XCircle size={16} className="mr-1" />
+                            Unlisted
+                          </>
+                        ) : (
+                          <>
+                            <svg className="h-4 w-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            Sold
+                          </>
+                        )}
+                      </button>
+                    </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex space-x-3">
-                          <button
-                            onClick={() => handleEditClick(pet)}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            <Edit size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDeletePet(pet.petId)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                      No pets found
+                        <button
+                          onClick={() => handleEditClick(pet)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePet(pet.petId)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              ) : (
+                <tr>
+                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                      No pets found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
 
           {/* Mobile Card View */}
           <div className="md:hidden space-y-4">

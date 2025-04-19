@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { GroomingService, IGroomingService, DayCareOption, IDayCareOption } from '../models/GroomingService';
+import { GroomingService, IGroomingService } from '../models/GroomingService';
+import { DayCareOption, IDayCareOption } from '../models/DayCareOption';
 
 // 获取所有美容服务
 export const getAllGroomingServices = async (req: Request, res: Response) => {
@@ -247,8 +248,8 @@ export const initializeDefaultServices = async () => {
           recommended: false
         },
         {
-          id: 'full',
-          name: 'Full Grooming',
+          id: 'premium',
+          name: 'Premium Grooming',
           description: 'Basic + haircut, styling',
           price: 120,
           displayPrice: 'RM 120',
@@ -273,7 +274,7 @@ export const initializeDefaultServices = async () => {
           duration: 4,
           displayDuration: '4 hours',
           features: [
-            { text: 'Everything in Full Grooming' },
+            { text: 'Everything in Premium Grooming' },
             { text: 'Aromatherapy bath' },
             { text: 'Deep conditioning treatment' },
             { text: 'Professional massage' },
