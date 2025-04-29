@@ -1,0 +1,11 @@
+# 确保所有路由都重定向到 index.html (包括查询参数)
+/*  /index.html  200
+
+# 设置 MIME 类型
+*.css  content-type=text/css
+*.js   content-type=application/javascript
+*.jpg  content-type=image/jpeg
+*.jpeg content-type=image/jpeg
+*.png  content-type=image/png
+*.gif  content-type=image/gif
+*.svg  content-type=image/svg+xml 

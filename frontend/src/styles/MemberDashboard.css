@@ -1,0 +1,156 @@
+.member-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.member-dashboard h1 {
+  text-align: center;
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 768px) {
+  .dashboard-content {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.pets-section,
+.appointments-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.pets-section h2,
+.appointments-section h2 {
+  margin-bottom: 1.5rem;
+  color: #444;
+}
+
+.pet-form,
+.appointment-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 480px) {
+  .pet-form,
+  .appointment-form {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.pet-form input,
+.appointment-form input,
+.pet-form select,
+.appointment-form select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.pet-form button,
+.appointment-form button {
+  padding: 0.5rem 1rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+}
+
+.pet-form button:hover,
+.appointment-form button:hover {
+  background-color: #45a049;
+}
+
+.pets-grid,
+.appointments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.pet-card,
+.appointment-card {
+  background: #f9f9f9;
+  padding: 1rem;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.pet-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.pet-card h3,
+.appointment-card h3 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.pet-card p,
+.appointment-card p {
+  margin: 0.25rem 0;
+  color: #666;
+}
+
+.pet-actions,
+.appointment-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.pet-actions button,
+.appointment-actions button {
+  padding: 0.25rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.pet-actions button:first-child,
+.appointment-actions button:first-child {
+  background-color: #2196F3;
+  color: white;
+}
+
+.pet-actions button:last-child,
+.appointment-actions button:last-child {
+  background-color: #f44336;
+  color: white;
+}
+
+.pet-actions button:hover,
+.appointment-actions button:hover {
+  opacity: 0.9;
+}
+
+.error {
+  color: #f44336;
+  text-align: center;
+  padding: 1rem;
+  background-color: #ffebee;
+  border-radius: 4px;
+  margin: 1rem 0;
+} 

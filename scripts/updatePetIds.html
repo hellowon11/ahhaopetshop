@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Pet IDs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,.3);
+            border-radius: 50%;
+            border-top-color: #4CAF50;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Update Pet IDs</h1>
+    <p>This tool will update the IDs of your shop pets according to the mapping below.</p>
+    
+    <table id="mappingTable">
+        <thead>
+            <tr>
+                <th>From</th>
+                <th>To</th>
+                <th>Pet Name</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>C003</td>
+                <td>C002</td>
+                <td id="name-C003">-</td>
+                <td id="status-C003">-</td>
+            </tr>
+            <tr>
+                <td>C005</td>
+                <td>C003</td>
+                <td id="name-C005">-</td>
+                <td id="status-C005">-</td>
+            </tr>
+            <tr>
+                <td>C007</td>
+                <td>C004</td>
+                <td id="name-C007">-</td>
+                <td id="status-C007">-</td>
+            </tr>
+            <tr>
+                <td>C009</td>
+                <td>C005</td>
+                <td id="name-C009">-</td>
+                <td id="status-C009">-</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div>
+        <label for="apiUrl">API URL:</label>
+        <input type="text" id="apiUrl" value="http://localhost:4003/api" style="width: 300px;">
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <button id="fetchButton">Fetch Pets</button>
+        <button id="updateButton" disabled>Update Pet IDs</button>
+        <span id="loading" class="loading" style="display: none;"></span>
+    </div>
+    
+    <div id="statusMessage" class="status" style="display: none;"></div>
+    
+    <script>
+        // ID映射表
+        const ID_MAPPINGS = [
+            { from: 'C003', to: 'C002' },
+            { from: 'C005', to: 'C003' },
+            { from: 'C007', to: 'C004' },
+            { from: 'C009', to: 'C005' }
+        ];
+        
+        // 全局变量
+        let allPets = [];
+        let petsMap = {};
+        
+        // DOM元素
+        const fetchButton = document.getElementById('fetchButton');
+        const updateButton = document.getElementById('updateButton');
+        const apiUrlInput = document.getElementById('apiUrl');
+        const loadingSpinner = document.getElementById('loading');
+        const statusMessage = document.getElementById('statusMessage');
+        
+        // 获取所有宠物
+        async function fetchPets() {
+            showLoading(true);
+            setStatus('', '');
+            
+            try {
+                const apiUrl = apiUrlInput.value;
+                const response = await fetch(`${apiUrl}/shop-pets`);
+                
+                if (!response.ok) {
+                    throw new Error(`API responded with status: ${response.status}`);
+                }
+                
+                allPets = await response.json();
+                petsMap = {};
+                
+                // 创建ID到宠物的映射
+                allPets.forEach(pet => {
+                    petsMap[pet.petId] = pet;
+                });
+                
+                // 更新表格显示
+                updateTable();
+                
+                // 检查是否可以更新ID
+                const canUpdate = ID_MAPPINGS.every(mapping => 
+                    petsMap[mapping.from] && 
+                    (!petsMap[mapping.to] || ID_MAPPINGS.some(m => m.from === mapping.to))
+                );
+                
+                updateButton.disabled = !canUpdate;
+                
+                if (canUpdate) {
+                    setStatus('Ready to update pet IDs', 'success');
+                } else {
+                    setStatus('Some pets are missing or there are ID conflicts', 'error');
+                }
+            } catch (error) {
+                console.error('Error fetching pets:', error);
+                setStatus(`Failed to fetch pets: ${error.message}`, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // 更新表格显示
+        function updateTable() {
+            ID_MAPPINGS.forEach(mapping => {
+                const pet = petsMap[mapping.from];
+                const nameCell = document.getElementById(`name-${mapping.from}`);
+                const statusCell = document.getElementById(`status-${mapping.from}`);
+                
+                if (pet) {
+                    nameCell.textContent = pet.name;
+                    statusCell.textContent = '✓ Found';
+                    statusCell.style.color = '#4CAF50';
+                } else {
+                    nameCell.textContent = '-';
+                    statusCell.textContent = '✗ Not Found';
+                    statusCell.style.color = '#a94442';
+                }
+                
+                // 检查目标ID是否存在冲突
+                if (petsMap[mapping.to] && !ID_MAPPINGS.some(m => m.from === mapping.to)) {
+                    statusCell.textContent = '✗ Target ID conflict';
+                    statusCell.style.color = '#a94442';
+                }
+            });
+        }
+        
+        // 更新宠物ID
+        async function updatePetIds() {
+            showLoading(true);
+            setStatus('Updating pet IDs...', '');
+            
+            const apiUrl = apiUrlInput.value;
+            const results = [];
+            
+            // 按依赖顺序处理（从后向前）
+            const reversedMappings = [...ID_MAPPINGS].reverse();
+            
+            for (const mapping of reversedMappings) {
+                const pet = petsMap[mapping.from];
+                if (!pet) {
+                    results.push({ from: mapping.from, to: mapping.to, success: false, error: 'Pet not found' });
+                    continue;
+                }
+                
+                try {
+                    // 准备数据
+                    const petData = { ...pet, petId: mapping.to };
+                    delete petData._id;
+                    delete petData.createdAt;
+                    delete petData.updatedAt;
+                    delete petData.__v;
+                    
+                    // 发送请求
+                    const response = await fetch(`${apiUrl}/shop-pets/${mapping.from}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(petData)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API responded with status: ${response.status}`);
+                    }
+                    
+                    results.push({ from: mapping.from, to: mapping.to, success: true });
+                } catch (error) {
+                    results.push({ from: mapping.from, to: mapping.to, success: false, error: error.message });
+                }
+            }
+            
+            // 统计结果
+            const successCount = results.filter(r => r.success).length;
+            const failCount = results.filter(r => !r.success).length;
+            
+            if (failCount === 0) {
+                setStatus(`Successfully updated ${successCount} pet IDs`, 'success');
+            } else {
+                setStatus(`Updated ${successCount} pet IDs, failed to update ${failCount} pet IDs`, 'error');
+            }
+            
+            // 重新获取宠物以更新表格
+            await fetchPets();
+        }
+        
+        // 辅助函数
+        function showLoading(show) {
+            loadingSpinner.style.display = show ? 'inline-block' : 'none';
+            fetchButton.disabled = show;
+            updateButton.disabled = show || (allPets.length === 0);
+        }
+        
+        function setStatus(message, type) {
+            if (!message) {
+                statusMessage.style.display = 'none';
+                return;
+            }
+            
+            statusMessage.textContent = message;
+            statusMessage.style.display = 'block';
+            
+            statusMessage.className = 'status';
+            if (type) {
+                statusMessage.classList.add(type);
+            }
+        }
+        
+        // 事件监听器
+        fetchButton.addEventListener('click', fetchPets);
+        updateButton.addEventListener('click', updatePetIds);
+        
+        // 页面加载时自动获取宠物
+        window.addEventListener('DOMContentLoaded', fetchPets);
+    </script>
+</body>
+</html> 

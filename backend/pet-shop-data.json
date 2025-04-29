@@ -1,0 +1,7 @@
+{
+  "user_test@example.com": "{\"email\":\"test@example.com\",\"name\":\"Test User\",\"phone\":\"1234567890\",\"role\":\"user\",\"password\":\"$2a$10$YourHashedPasswordHere\"}",
+  "pets_test@example.com": "[{\"id\":\"1\",\"name\":\"Buddy\",\"breed\":\"Golden Retriever\",\"age\":\"3\",\"gender\":\"Male\",\"specialNeeds\":\"None\",\"type\":\"dog\"}]",
+  "notifications_test@example.com": "[{\"id\":\"1\",\"type\":\"welcome\",\"title\":\"Welcome\",\"date\":\"2024-04-05\",\"message\":\"Welcome to AH HAO Pet Shop!\",\"isRead\":false}]",
+  "appointments_[object Object]": "[{\"id\":\"1\",\"date\":\"2024-04-10\",\"time\":\"10:00\",\"duration\":1,\"status\":\"pending\",\"service\":\"Grooming\"}]",
+  "bookedAppointments": "[{\"date\":\"2024-04-10\",\"time\":\"10:00\",\"duration\":1,\"service\":\"Grooming\"}]"
+} 
