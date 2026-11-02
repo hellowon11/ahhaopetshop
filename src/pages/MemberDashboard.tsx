@@ -96,7 +96,7 @@ const formatDateTime = (appointment: Appointment): string => {
       hour12: true,
     });
   }
-
+  
   // 如果没有日期或时间
   return appointment.date
     ? `${appointment.date} ${appointment.time || ""}`
@@ -245,94 +245,83 @@ const MemberDashboard: React.FC = () => {
   // 计算未读通知数量
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  // 标记通知为已读
-  const markAsRead = async (notificationId: string) => {
-    try {
-      await apiService.notifications.markAsRead(notificationId);
-      setNotifications(
-        notifications.map((n) =>
-          n._id === notificationId ? { ...n, isRead: true } : n,
-        ),
-      );
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-      setError("Operation failed. Please try again.");
-    }
-  };
-
-  // 标记所有通知为已读
+  // Optimistic UI first — network in background (mobile feels snappy)
   const markAllAsRead = async () => {
+    const prev = notifications;
+    setNotifications((list) => list.map((n) => ({ ...n, isRead: true })));
     try {
       await apiService.notifications.markAllAsRead();
-      setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
       showToast("All notifications marked as read");
     } catch (error) {
       console.error("Failed to mark all notifications as read:", error);
+      setNotifications(prev);
       showToast("Failed to update notifications", "error");
     }
   };
 
-  // 添加删除通知的函数
   const deleteNotification = async (notificationId: string) => {
+    const prev = notifications;
+    setNotifications((list) => list.filter((n) => n._id !== notificationId));
+    setSelectedNotifications((ids) => ids.filter((id) => id !== notificationId));
     try {
       await apiService.notifications.delete(notificationId);
-      setNotifications(notifications.filter((n) => n._id !== notificationId));
       showToast("Notification deleted");
     } catch (error) {
       console.error("Failed to delete notification:", error);
+      setNotifications(prev);
       showToast("Failed to delete notification", "error");
     }
   };
 
-  // 切换选择模式
   const toggleSelectionMode = () => {
-    setIsSelectionMode(!isSelectionMode);
+    setIsSelectionMode((open) => !open);
     setSelectedNotifications([]);
   };
 
-  // 选择/取消选择单个通知
   const toggleNotificationSelection = (id: string) => {
     setSelectedNotifications((prev) =>
       prev.includes(id) ? prev.filter((nId) => nId !== id) : [...prev, id],
     );
   };
 
-  // 全选/取消全选
   const toggleSelectAll = () => {
-    if (selectedNotifications.length === notifications.length) {
-      setSelectedNotifications([]);
-    } else {
-      setSelectedNotifications(notifications.map((n) => n._id));
-    }
+    setSelectedNotifications((prev) =>
+      prev.length === notifications.length
+        ? []
+        : notifications.map((n) => n._id),
+    );
   };
 
-  // 删除选中的通知
   const deleteSelectedNotifications = async () => {
+    const ids = selectedNotifications;
+    if (!ids.length) return;
+    const prev = notifications;
+    const idSet = new Set(ids);
+    setNotifications((list) => list.filter((n) => !idSet.has(n._id)));
+    setSelectedNotifications([]);
+    setIsSelectionMode(false);
     try {
-      await apiService.notifications.deleteMultiple(selectedNotifications);
-      setNotifications(
-        notifications.filter((n) => !selectedNotifications.includes(n._id)),
-      );
-      setSelectedNotifications([]);
-      setIsSelectionMode(false);
+      await apiService.notifications.deleteMultiple(ids);
       showToast("Selected notifications deleted");
     } catch (error) {
       console.error("Failed to delete selected notifications:", error);
+      setNotifications(prev);
       showToast("Failed to delete notifications", "error");
     }
   };
 
-  // 删除所有通知
   const deleteAllNotifications = async () => {
     setConfirmClearNotifications(false);
+    const prev = notifications;
+    setNotifications([]);
+    setSelectedNotifications([]);
+    setIsSelectionMode(false);
     try {
       await apiService.notifications.deleteAll();
-      setNotifications([]);
-      setSelectedNotifications([]);
-      setIsSelectionMode(false);
       showToast("All notifications cleared");
     } catch (error) {
       console.error("Failed to delete all notifications:", error);
+      setNotifications(prev);
       showToast("Couldn’t clear notifications", "error");
     }
   };
@@ -340,7 +329,7 @@ const MemberDashboard: React.FC = () => {
   // 将服务类型名称转换为后端服务ID
   const getServiceIdFromName = (serviceType: string): string => {
     console.log(`开始查找服务ID，服务名称: "${serviceType}"`);
-
+    
     // 直接从 services 数组中查找匹配的服务
     const service = services.find((s) => s.name === serviceType);
     if (service) {
@@ -349,7 +338,7 @@ const MemberDashboard: React.FC = () => {
       );
       return service.id;
     }
-
+    
     // 如果没有直接匹配，尝试特殊情况处理
     if (serviceType === "Full Grooming") {
       // 查找 Premium Grooming 服务
@@ -363,7 +352,7 @@ const MemberDashboard: React.FC = () => {
         return premiumService.id;
       }
     }
-
+    
     console.warn(`未找到服务"${serviceType}"的ID`);
     return "";
   };
@@ -374,13 +363,13 @@ const MemberDashboard: React.FC = () => {
       console.warn(`无法获取ID为"${serviceId}"的服务: 服务数据未加载`);
       return undefined;
     }
-
+    
     console.log(
       `尝试查找服务ID: "${serviceId}"`,
       services.map((s) => `${s.id}(${s.name})`).join(", "),
     );
     const service = services.find((s) => s.id === serviceId);
-
+    
     if (!service) {
       console.warn(`未找到ID为"${serviceId}"的服务`);
     } else {
@@ -388,7 +377,7 @@ const MemberDashboard: React.FC = () => {
         `找到服务: ID=${service.id}, 名称=${service.name}, 价格=${service.price}, 折扣=${service.discount}%`,
       );
     }
-
+    
     return service;
   };
 
@@ -398,15 +387,15 @@ const MemberDashboard: React.FC = () => {
   ): GroomingService | undefined => {
     console.log(`通过名称获取服务: "${serviceType}"`);
     const serviceId = getServiceIdFromName(serviceType);
-
+    
     if (!serviceId) {
       console.warn(`无法为"${serviceType}"获取服务ID`);
       return undefined;
     }
-
+    
     // 获取服务
     const service = getServiceById(serviceId);
-
+    
     // 检查是否找到服务，如果没找到，尝试直接匹配名称
     if (!service) {
       console.log(`通过ID "${serviceId}" 未找到服务，尝试直接匹配名称...`);
@@ -418,32 +407,32 @@ const MemberDashboard: React.FC = () => {
         return serviceByName;
       }
     }
-
+    
     console.log(
       `获取服务结果:`,
       service
         ? `成功 (ID=${service.id}, 名称=${service.name}, 折扣=${service.discount}%)`
         : "失败",
     );
-
+    
     return service;
   };
 
   // 获取服务显示名称 - 优先使用API数据
   const getServiceDisplayName = (serviceType: string): string => {
     const service = getServiceByName(serviceType);
-
+    
     if (service) {
       console.log(`显示服务名称: "${serviceType}" -> "${service.name}"`);
       return service.name;
     }
-
+    
     // 后备逻辑，如果无法从API获取数据
     if (serviceType === "Full Grooming") {
       console.log("应用后备逻辑: Full Grooming -> Premium Grooming");
       return "Premium Grooming";
     }
-
+    
     return serviceType;
   };
 
@@ -452,12 +441,12 @@ const MemberDashboard: React.FC = () => {
     // 先通过ID查找
     const serviceId = getServiceIdFromName(serviceType);
     let service = services.find((s) => s.id === serviceId);
-
+    
     // 如果找不到，尝试通过名称匹配
     if (!service) {
       service = services.find((s) => s.name === serviceType);
     }
-
+    
     // 如果还找不到，对于Premium/Full Grooming特殊处理
     if (
       !service &&
@@ -473,7 +462,7 @@ const MemberDashboard: React.FC = () => {
           s.id === "premium",
       );
     }
-
+    
     if (service) {
       console.log(
         `找到服务 "${serviceType}": ID=${service.id}, 名称=${service.name}, 价格=${service.price}, 折扣=${service.discount}%`,
@@ -481,7 +470,7 @@ const MemberDashboard: React.FC = () => {
     } else {
       console.warn(`无法找到服务 "${serviceType}", 已尝试所有查找策略`);
     }
-
+    
     return service;
   };
 
@@ -489,15 +478,15 @@ const MemberDashboard: React.FC = () => {
   const calculateBasePrice = (serviceType: string): number => {
     // 使用增强的服务查找逻辑
     const service = findService(serviceType);
-
+    
     if (service) {
       console.log(`服务${serviceType}的基础价格(从API): RM${service.price}`);
       return service.price;
     }
-
+    
     // 后备逻辑，只在API获取失败时使用
     let fallbackPrice = 0;
-
+    
     switch (serviceType) {
       case "Basic Grooming":
         fallbackPrice = 70;
@@ -512,7 +501,7 @@ const MemberDashboard: React.FC = () => {
       default:
         fallbackPrice = 0;
     }
-
+    
     console.warn(
       `无法从API获取${serviceType}价格，使用后备价格: RM${fallbackPrice}`,
     );
@@ -525,20 +514,20 @@ const MemberDashboard: React.FC = () => {
   ): number => {
     if (!options || !options.type) {
       console.log("No daycare options provided");
-      return 0;
+        return 0;
     }
-
+    
     if (!dayCareOptions || dayCareOptions.length === 0) {
       console.warn("No daycare options available from API");
       return 0;
     }
-
+    
     const option = dayCareOptions.find((o) => o.type === options.type);
     if (!option) {
       console.warn(`Daycare option not found for type: ${options.type}`);
       return 0;
     }
-
+    
     const days = options.days ?? 1;
     let price = 0;
     if (options.type === "daily") {
@@ -550,43 +539,43 @@ const MemberDashboard: React.FC = () => {
         `Long-term daycare price from API: ${days} days * RM${option.price} = RM${price}`,
       );
     }
-
+    
     return price;
   };
 
   // 计算会员折扣额 - 完全基于API数据
   const calculateDiscountAmount = (serviceType: string): number => {
     console.log(`开始计算折扣金额: "${serviceType}"`);
-
+    
     // 使用增强的服务查找逻辑
     const service = findService(serviceType);
-
+    
     if (!service) {
       console.warn(`找不到服务数据，无法计算折扣: ${serviceType}`);
       return 0;
     }
-
+    
     // 获取基础价格和折扣率
     const basePrice = service.price;
     const discountRate = service.discount;
-
+    
     // 如果服务有折扣，计算折扣金额
     if (discountRate > 0) {
       // 确保折扣率为正数，并且正确应用折扣计算公式
       const validDiscountRate = Math.max(0, Math.min(100, discountRate));
       const discountAmount = basePrice * (validDiscountRate / 100);
-
+      
       console.log(`服务"${serviceType}"(${service.id})的折扣计算详情:`, {
         serviceId: service.id,
         basePrice: `RM${basePrice}`,
         discountRate: `${validDiscountRate}%`,
         discountAmount: `RM${discountAmount.toFixed(2)}`,
       });
-
+      
       // 四舍五入到两位小数
       return Math.round(discountAmount * 100) / 100;
     }
-
+    
     console.log(
       `服务"${serviceType}"(${service.id})无折扣，折扣率:${discountRate}%`,
     );
@@ -601,7 +590,7 @@ const MemberDashboard: React.FC = () => {
     console.log(`开始计算总价: "${serviceType}"`);
     // 获取服务对象 - 使用增强的服务查找逻辑
     const service = findService(serviceType);
-
+    
     if (!service) {
       console.warn(`找不到服务数据，使用后备计算: ${serviceType}`);
       // 使用后备逻辑，调用另外两个函数
@@ -609,28 +598,28 @@ const MemberDashboard: React.FC = () => {
       const dayCarePrice = calculateDayCarePrice(options);
       return Math.round((basePrice + dayCarePrice) * 100) / 100;
     }
-
+    
     // 从API获取基础价格和折扣率
     const basePrice = service.price;
     const discountRate = service.discount || 0;
-
+    
     // 获取日托价格
     const dayCarePrice = calculateDayCarePrice(options);
-
+    
     // 计算总价 - 注意：只对美容服务应用折扣，日托服务不享受折扣
     let totalPrice = basePrice + dayCarePrice;
     let discountAmount = 0;
-
+    
     if (discountRate > 0) {
       // 确保折扣率为正数，并且正确应用折扣计算公式
       const validDiscountRate = Math.max(0, Math.min(100, discountRate));
-
+      
       // 计算折扣金额 - 只针对美容服务，不包括日托
       discountAmount = basePrice * (validDiscountRate / 100);
-
+      
       // 更新总价 = 基础价格 - 折扣金额 + 日托价格
       totalPrice = basePrice - discountAmount + dayCarePrice;
-
+      
       console.log(`总价计算详情: ${serviceType}`, {
         serviceId: service.id,
         basePrice: `RM${basePrice}`,
@@ -648,7 +637,7 @@ const MemberDashboard: React.FC = () => {
         totalPrice: `RM${totalPrice.toFixed(2)}`,
       });
     }
-
+    
     // 四舍五入到两位小数
     return Math.round(totalPrice * 100) / 100;
   };
@@ -738,7 +727,7 @@ const MemberDashboard: React.FC = () => {
       ) {
         setShowNotifications(false);
       }
-
+      
       if (
         !target.closest(".profile-dropdown") &&
         !target.closest(".profile-button")
@@ -795,28 +784,28 @@ const MemberDashboard: React.FC = () => {
 
   // 处理宠物添加（提示由 PetProfiles 显示；此处不整页 Loading）
   const handleAddPet = async (petData: Omit<Pet, "_id">) => {
-    if (!user || !user._id) {
+      if (!user || !user._id) {
       throw new Error(
         "Authentication error. Please try logging out and logging in again.",
       );
     }
 
-    const newPet = await apiService.pets.add({
-      ...petData,
+      const newPet = await apiService.pets.add({
+        ...petData,
       owner: user._id,
-    });
+      });
 
     setPets((prevPets) => [...prevPets, newPet]);
-    setShowAddPet(false);
+      setShowAddPet(false);
   };
 
   const handleUpdatePet = async (id: string, petData: Partial<Pet>) => {
-    const updatedPet = await apiService.pets.update(id, petData);
+      const updatedPet = await apiService.pets.update(id, petData);
     setPets((prev) => prev.map((pet) => (pet._id === id ? updatedPet : pet)));
   };
 
   const handleDeletePet = async (id: string) => {
-    await apiService.pets.delete(id);
+      await apiService.pets.delete(id);
     setPets((prev) => prev.filter((pet) => pet._id !== id));
   };
 
@@ -848,7 +837,7 @@ const MemberDashboard: React.FC = () => {
         if (!serviceId) {
           throw new Error(`无法找到服务"${appointmentData.serviceType}"的ID`);
         }
-
+        
         // 获取服务信息
         const service = getServiceById(serviceId);
         if (!service) {
@@ -958,18 +947,7 @@ const MemberDashboard: React.FC = () => {
     }
   };
 
-  const handleDeleteNotification = async (id: string) => {
-    try {
-      await apiService.notifications.delete(id);
-      setNotifications(
-        notifications.filter((notification) => notification._id !== id),
-      );
-      showToast("Notification deleted");
-    } catch (error) {
-      console.error("Failed to delete notification:", error);
-      showToast("Failed to delete notification", "error");
-    }
-  };
+  const handleDeleteNotification = (id: string) => deleteNotification(id);
 
   const handleUpdateProfile = async (userData: Partial<User>) => {
     try {
@@ -996,7 +974,7 @@ const MemberDashboard: React.FC = () => {
       setShowProfile(false);
       setShowLogoutModal(true);
       clearDashboardCache();
-
+      
       // 显示登出动画 1.5 秒后执行实际登出
       setTimeout(async () => {
         try {
@@ -1014,7 +992,7 @@ const MemberDashboard: React.FC = () => {
 
   // 更新通知面板渲染
   const renderNotifications = () => (
-    <div className="notification-dropdown fixed top-[4.5rem] right-4 z-50 w-80 overflow-hidden rounded-lg border border-gray-200/80 bg-white py-2 shadow-2xl backdrop-blur-sm backdrop-saturate-150 md:w-96">
+    <div className="notification-dropdown fixed top-[4.5rem] right-4 z-50 w-80 overflow-hidden rounded-lg border border-gray-200/80 bg-white py-2 shadow-2xl md:w-96">
       {/* 头部操作栏 */}
       <div className="border-b border-gray-100 px-3 py-3 md:px-4">
         <div className="mb-2 flex items-center justify-between">
@@ -1040,7 +1018,7 @@ const MemberDashboard: React.FC = () => {
             )}
           </div>
         </div>
-
+        
         {/* 选择模式工具栏 — checkbox 全选，和 Admin 批量一致 */}
         {isSelectionMode && notifications.length > 0 && (
           <div className="-mx-3 flex items-center justify-between gap-2 border-y border-gray-100 bg-gray-50 px-3 py-2 md:-mx-4 md:px-4">
@@ -1085,33 +1063,28 @@ const MemberDashboard: React.FC = () => {
           notifications.map((notification) => (
             <div
               key={notification._id}
-              className={`group relative cursor-pointer border-b border-gray-100 px-3 py-2 transition-colors duration-200 last:border-b-0 md:px-4 md:py-3 md:hover:bg-gray-100 ${
-                !notification.isRead ? "bg-blue-50/80 backdrop-blur-sm" : ""
+              className={`group relative cursor-pointer border-b border-gray-100 px-3 py-2 last:border-b-0 md:px-4 md:py-3 md:hover:bg-gray-100 ${
+                !notification.isRead ? "bg-blue-50" : ""
               }`}
-              onClick={(e) => {
-                e.stopPropagation();
+              onClick={() => {
                 if (isSelectionMode) {
                   toggleNotificationSelection(notification._id);
                 } else if (!notification.isRead) {
-                  handleMarkNotificationAsRead(notification._id);
+                  void handleMarkNotificationAsRead(notification._id);
                 }
               }}
             >
               <div className="flex items-start">
-                {/* 选择框 */}
                 {isSelectionMode && (
-                  <div
-                    className="mr-3 mt-1 cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation(); // 阻止冒泡，避免触发父元素的点击事件
-                      toggleNotificationSelection(notification._id);
-                    }}
-                  >
+                  <div className="mr-3 mt-1 shrink-0">
                     <input
                       type="checkbox"
                       checked={selectedNotifications.includes(notification._id)}
-                      onChange={() => {}} // 空函数，实际点击处理由父div处理
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                      onChange={() =>
+                        toggleNotificationSelection(notification._id)
+                      }
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                   </div>
                 )}
@@ -1132,8 +1105,8 @@ const MemberDashboard: React.FC = () => {
                   <div className="flex-grow">
                     <div className="flex justify-between items-start">
                       <p className="text-xs md:text-sm font-medium text-gray-900">
-                        {notification.title}
-                      </p>
+                      {notification.title}
+                    </p>
                       {notification.isRead && (
                         <span className="text-xs text-blue-500 ml-2 flex items-center">
                           <CheckCircle className="w-3 h-3 mr-1" />
@@ -1194,7 +1167,7 @@ const MemberDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-slate-50">
       {isRefreshing && (
         <div className="fixed top-0 left-0 right-0 z-[55] h-0.5 overflow-hidden bg-rose-100">
           <div className="h-full w-1/3 animate-pulse bg-rose-500" />
@@ -1236,7 +1209,7 @@ const MemberDashboard: React.FC = () => {
           </div>
         </div>
       )}
-
+      
       <nav className="sticky top-0 z-40 border-b border-slate-200/60 bg-white/95 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
@@ -1256,7 +1229,7 @@ const MemberDashboard: React.FC = () => {
               <span className="hidden truncate text-sm font-medium text-slate-700 sm:text-base md:inline-block">
                 Member Dashboard
               </span>
-            </div>
+              </div>
 
             {/* Home + notifications + profile */}
             <div className="flex items-center gap-2 sm:gap-3">
@@ -1268,21 +1241,21 @@ const MemberDashboard: React.FC = () => {
               >
                 <Home className="h-5 w-5" />
               </button>
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="notification-bell-button relative flex items-center space-x-2 text-gray-800 hover:text-rose-600 transition-colors duration-300"
-              >
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="notification-bell-button relative flex items-center space-x-2 text-gray-800 hover:text-rose-600 transition-colors duration-300"
+                >
                 <Bell
                   className={`w-6 h-6 ${showNotifications ? "text-rose-600" : ""}`}
                 />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-              <div className="relative">
-                <button
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+                <div className="relative">
+                  <button
                   onClick={() => {
                     if (showProfile) {
                       closeProfileDropdown();
@@ -1290,139 +1263,139 @@ const MemberDashboard: React.FC = () => {
                       setShowProfile(true);
                     }
                   }}
-                  className="profile-button flex items-center text-slate-600 hover:text-slate-900 transition-colors p-2 hover:bg-white/90 rounded-lg"
-                >
-                  <div className="w-8 h-8 bg-gradient-to-br from-violet-100 to-sky-100 rounded-full flex items-center justify-center border border-white/60">
-                    <UserIcon className="w-4 h-4 text-slate-600" />
-                  </div>
-                  {/* 仅在非移动设备上显示用户名和下拉箭头 */}
-                  <span className="text-sm font-medium ml-2 hidden md:inline-block">
-                    {userProfile.name || user?.email}
-                  </span>
-                  <ChevronDown className="w-4 h-4 hidden md:inline-block ml-1" />
-                </button>
-
-                {/* Profile Dropdown */}
-                {showProfile && (
-                  <div
-                    className="profile-dropdown absolute right-0 mt-2 w-64 md:w-80 bg-white rounded-lg border border-slate-200 py-2 z-50"
-                    onClick={(e) => {
-                      // Prevent outer click event when clicking inside dropdown menu
-                      e.stopPropagation();
-                    }}
+                    className="profile-button flex items-center text-slate-600 hover:text-slate-900 transition-colors p-2 hover:bg-white/90 rounded-lg"
                   >
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <div className="flex items-center justify-between">
+                    <div className="w-8 h-8 bg-gradient-to-br from-violet-100 to-sky-100 rounded-full flex items-center justify-center border border-white/60">
+                      <UserIcon className="w-4 h-4 text-slate-600" />
+                    </div>
+                    {/* 仅在非移动设备上显示用户名和下拉箭头 */}
+                    <span className="text-sm font-medium ml-2 hidden md:inline-block">
+                      {userProfile.name || user?.email}
+                    </span>
+                    <ChevronDown className="w-4 h-4 hidden md:inline-block ml-1" />
+                  </button>
+
+                  {/* Profile Dropdown */}
+                  {showProfile && (
+                    <div 
+                      className="profile-dropdown absolute right-0 mt-2 w-64 md:w-80 bg-white rounded-lg border border-slate-200 py-2 z-50"
+                      onClick={(e) => {
+                        // Prevent outer click event when clicking inside dropdown menu
+                        e.stopPropagation();
+                      }}
+                    >
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold text-gray-900">
                           Profile
                         </h3>
-                        <button
+                          <button
                           type="button"
                           onClick={toggleProfileEdit}
-                          className="text-gray-400 hover:text-gray-600"
+                            className="text-gray-400 hover:text-gray-600"
                           aria-label={
                             isEditing ? "Cancel editing" : "Edit profile"
                           }
                           title={isEditing ? "Cancel" : "Edit"}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="px-4 py-3 space-y-3">
+                      <div className="px-4 py-3 space-y-3">
                       <div className="flex items-center gap-3">
                         <UserIcon className="h-4 w-4 shrink-0 text-gray-400" />
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={userProfile.name}
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={userProfile.name}
                             onChange={(e) =>
                               setUserProfile({
                                 ...userProfile,
                                 name: e.target.value,
                               })
                             }
-                            onKeyDown={(e) => {
+                              onKeyDown={(e) => {
                               if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleProfileUpdate();
-                              }
-                            }}
+                                  e.preventDefault();
+                                  handleProfileUpdate();
+                                }
+                              }}
                             className="min-w-0 flex-1 rounded border px-2 py-1"
-                            placeholder="Your name"
-                          />
-                        ) : (
+                              placeholder="Your name"
+                            />
+                          ) : (
                           <span className="min-w-0 truncate text-gray-600">
                             {userProfile.name || "Add your name"}
                           </span>
-                        )}
-                      </div>
+                          )}
+                        </div>
                       <div className="flex items-center gap-3">
                         <Phone className="h-4 w-4 shrink-0 text-gray-400" />
-                        {isEditing ? (
-                          <input
-                            type="tel"
-                            value={userProfile.phone}
+                          {isEditing ? (
+                            <input
+                              type="tel"
+                              value={userProfile.phone}
                             onChange={(e) =>
                               setUserProfile({
                                 ...userProfile,
                                 phone: e.target.value,
                               })
                             }
-                            onKeyDown={(e) => {
+                              onKeyDown={(e) => {
                               if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleProfileUpdate();
-                              }
-                            }}
+                                  e.preventDefault();
+                                  handleProfileUpdate();
+                                }
+                              }}
                             className="min-w-0 flex-1 rounded border px-2 py-1"
                             placeholder="0123456789"
-                          />
-                        ) : (
+                            />
+                          ) : (
                           <span className="min-w-0 truncate text-gray-600">
                             {userProfile.phone || "Add phone number"}
                           </span>
-                        )}
-                      </div>
+                          )}
+                        </div>
                       <div className="flex items-center gap-3">
                         <Mail className="h-4 w-4 shrink-0 text-gray-400" />
                         <span className="min-w-0 truncate text-gray-600">
                           {userProfile.email}
                         </span>
-                      </div>
-                      {isEditing && (
-                        <button
+                        </div>
+                        {isEditing && (
+                          <button
                           type="button"
-                          onClick={handleProfileUpdate}
+                            onClick={handleProfileUpdate}
                           disabled={isSavingProfile}
                           className="mt-2 w-full rounded-md bg-rose-600 px-3 py-1.5 text-sm text-white transition-colors hover:bg-rose-700 disabled:opacity-50 md:px-4 md:py-2"
-                        >
+                          >
                           {isSavingProfile ? "Saving…" : "Save Changes"}
+                          </button>
+                        )}
+                      </div>
+                      <div className="border-t border-gray-100 mt-2">
+                        <button
+                          onClick={handleSignOut}
+                          className="flex items-center space-x-2 px-4 py-3 text-gray-600 hover:bg-rose-50 w-full transition-colors duration-200 hover:text-rose-600 group"
+                        >
+                          <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                          <span>Sign Out</span>
                         </button>
-                      )}
+                      </div>
                     </div>
-                    <div className="border-t border-gray-100 mt-2">
-                      <button
-                        onClick={handleSignOut}
-                        className="flex items-center space-x-2 px-4 py-3 text-gray-600 hover:bg-rose-50 w-full transition-colors duration-200 hover:text-rose-600 group"
-                      >
-                        <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                        <span>Sign Out</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
+                {showNotifications && renderNotifications()}
               </div>
-              {showNotifications && renderNotifications()}
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
       <main>
         <div className="mx-auto max-w-7xl px-4 pb-12 pt-6 sm:px-6 sm:pt-8 lg:px-8">
           <div className="mb-6 px-1">
-            <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Welcome back</h2>
             <p className="mt-1 font-medium text-gray-800">
               {userProfile.name || "Member"}
             </p>
@@ -1439,7 +1412,7 @@ const MemberDashboard: React.FC = () => {
                 Quick Actions
               </h3>
               <div className="grid grid-cols-2 gap-3 h-[160px] md:h-[180px] overflow-y-auto pr-2 custom-scrollbar">
-                <div
+                <div 
                   onClick={() => navigate("/grooming-appointment")}
                   className="bg-gray-50 hover:bg-blue-50 rounded-xl p-2 sm:p-3 h-[70px] sm:h-[80px] cursor-pointer transition-colors flex items-center justify-center flex-col"
                 >
@@ -1448,13 +1421,13 @@ const MemberDashboard: React.FC = () => {
                     Book Appointment
                   </span>
                 </div>
-
-                <div
+                
+                <div 
                   onClick={handleWhatsApp}
                   className="bg-gray-50 hover:bg-green-50 rounded-xl p-2 sm:p-3 h-[70px] sm:h-[80px] cursor-pointer transition-colors flex items-center justify-center flex-col"
                 >
-                  <svg
-                    viewBox="0 0 24 24"
+                  <svg 
+                    viewBox="0 0 24 24" 
                     className="w-5 h-5 text-green-600 mb-1 sm:mb-2"
                     fill="currentColor"
                   >
@@ -1464,8 +1437,8 @@ const MemberDashboard: React.FC = () => {
                     Contact Us
                   </span>
                 </div>
-
-                <div
+                
+                <div 
                   onClick={() => navigate("/appointments")}
                   className="bg-gray-50 hover:bg-purple-50 rounded-xl p-2 sm:p-3 h-[70px] sm:h-[80px] cursor-pointer transition-colors flex items-center justify-center flex-col"
                 >
@@ -1474,8 +1447,8 @@ const MemberDashboard: React.FC = () => {
                     Grooming History
                   </span>
                 </div>
-
-                <div
+                
+                <div 
                   onClick={() => navigate("/supplies")}
                   className="bg-gray-50 hover:bg-rose-50 rounded-xl p-2 sm:p-3 h-[70px] sm:h-[80px] cursor-pointer transition-colors flex items-center justify-center flex-col"
                 >
@@ -1504,12 +1477,12 @@ const MemberDashboard: React.FC = () => {
                     Day Care
                   </span>
                 </div>
-
-                <div
+                
+                <div 
                   onClick={() => navigate("/favourites")}
                   className="bg-gray-50 hover:bg-pink-50 rounded-xl p-2 sm:p-3 h-[70px] sm:h-[80px] cursor-pointer transition-colors flex items-center justify-center flex-col"
                 >
-                  <svg
+                  <svg 
                     className="w-5 h-5 text-pink-600 mb-1 sm:mb-2"
                     viewBox="0 0 24 24"
                     fill="none"
@@ -1568,7 +1541,7 @@ const MemberDashboard: React.FC = () => {
                       >
                         Book a grooming
                       </button>
-                    </div>
+                            </div>
                   );
                 }
 
@@ -1619,7 +1592,7 @@ const MemberDashboard: React.FC = () => {
                               aria-label={isDog ? "Dog" : "Cat"}
                             >
                               <PetIcon className="h-5 w-5" strokeWidth={1.75} />
-                            </div>
+                              </div>
 
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start justify-between gap-2">
@@ -1631,7 +1604,7 @@ const MemberDashboard: React.FC = () => {
                                     {serviceName}
                                   </p>
                                 </div>
-                                <button
+                                <button 
                                   type="button"
                                   onClick={(e) =>
                                     openPricePopover(e, appointment._id || "", {
@@ -1661,7 +1634,7 @@ const MemberDashboard: React.FC = () => {
                                   />
                                 </button>
                               </div>
-
+                              
                               <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-gray-500">
                                 <Clock className="h-3.5 w-3.5 shrink-0 text-gray-400" />
                                 {formatDateTime(appointment)}
@@ -1673,8 +1646,8 @@ const MemberDashboard: React.FC = () => {
                     })}
                   </div>
                 );
-              })()}
-
+                              })()}
+                              
               {pricePopover &&
                 createPortal(
                   <div
@@ -1687,22 +1660,22 @@ const MemberDashboard: React.FC = () => {
                       <span>Service</span>
                       <span className="font-medium text-gray-800">
                         RM {pricePopover.basePrice.toFixed(2)}
-                      </span>
-                    </div>
+                                    </span>
+                                  </div>
                     {pricePopover.discountAmount > 0 && (
                       <div className="mt-1.5 flex justify-between text-xs">
-                        <span className="text-gray-600">
+                                      <span className="text-gray-600">
                           Discount ({pricePopover.discountPct}%)
-                        </span>
+                                      </span>
                         <span className="font-medium text-red-600">
                           −RM {pricePopover.discountAmount.toFixed(2)}
-                        </span>
-                      </div>
-                    )}
+                                      </span>
+                                    </div>
+                                  )}
                     <div className="mt-2 flex justify-between border-t border-gray-100 pt-2 text-xs font-semibold text-gray-900">
                       <span>Total</span>
                       <span>RM {pricePopover.total.toFixed(2)}</span>
-                    </div>
+                                  </div>
                   </div>,
                   document.body,
                 )}
@@ -1721,16 +1694,16 @@ const MemberDashboard: React.FC = () => {
                 </button>
               </div>
 
-              <PetProfiles
-                isAddingPet={showAddPet}
-                setIsAddingPet={setShowAddPet}
-                onAddPet={handleAddPet}
-                onUpdatePet={handleUpdatePet}
-                onDeletePet={handleDeletePet}
-                hideNavigationButtons={true}
-              />
+                <PetProfiles 
+                  isAddingPet={showAddPet} 
+                  setIsAddingPet={setShowAddPet} 
+                  onAddPet={handleAddPet}
+                  onUpdatePet={handleUpdatePet}
+                  onDeletePet={handleDeletePet}
+                  hideNavigationButtons={true}
+                />
             </div>
-
+            
             {/* Member Benefits Section */}
             <div className="bg-white rounded-xl shadow-sm p-5">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -1809,7 +1782,7 @@ const MemberDashboard: React.FC = () => {
                               ? `${service.discount}% OFF`
                               : "—"}
                           </span>
-                        </div>
+                    </div>
                       ))}
                     {services.length === 0 && (
                       <p className="text-xs text-gray-400">
@@ -1827,4 +1800,4 @@ const MemberDashboard: React.FC = () => {
   );
 };
 
-export default MemberDashboard;
+export default MemberDashboard; 
