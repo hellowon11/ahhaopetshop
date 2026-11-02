@@ -1014,18 +1014,18 @@ const MemberDashboard: React.FC = () => {
 
   // 更新通知面板渲染
   const renderNotifications = () => (
-    <div className="notification-dropdown fixed top-[4.5rem] right-4 w-80 md:w-96 bg-white rounded-lg shadow-2xl border border-gray-200/80 py-2 z-50 backdrop-blur-sm backdrop-saturate-150">
+    <div className="notification-dropdown fixed top-[4.5rem] right-4 z-50 w-80 overflow-hidden rounded-lg border border-gray-200/80 bg-white py-2 shadow-2xl backdrop-blur-sm backdrop-saturate-150 md:w-96">
       {/* 头部操作栏 */}
-      <div className="px-3 md:px-4 py-3 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-base md:text-lg font-semibold text-gray-900">
+      <div className="border-b border-gray-100 px-3 py-3 md:px-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-base font-semibold text-gray-900 md:text-lg">
             Notifications
           </h3>
           <div className="flex items-center space-x-2">
             {notifications.length > 0 && (
               <button
                 onClick={toggleSelectionMode}
-                className="text-xs md:text-sm text-gray-600 hover:text-gray-800 px-1.5 md:px-2 py-1 rounded hover:bg-gray-100"
+                className="rounded px-1.5 py-1 text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-800 md:px-2 md:text-sm"
               >
                 {isSelectionMode ? "Cancel" : "Select"}
               </button>
@@ -1033,7 +1033,7 @@ const MemberDashboard: React.FC = () => {
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-xs md:text-sm text-blue-600 hover:text-blue-700 px-1.5 md:px-2 py-1 rounded hover:bg-blue-50"
+                className="rounded px-1.5 py-1 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700 md:px-2 md:text-sm"
               >
                 Read All
               </button>
@@ -1043,17 +1043,18 @@ const MemberDashboard: React.FC = () => {
 
         {/* 选择模式工具栏 */}
         {isSelectionMode && notifications.length > 0 && (
-          <div className="flex justify-between items-center bg-gray-50 px-4 py-2 -mx-4 border-y border-gray-100">
-            <div className="flex items-center space-x-4">
+          <div className="-mx-3 flex items-center justify-between gap-2 border-y border-gray-100 bg-gray-50 px-3 py-2 md:-mx-4 md:px-4">
+            <div className="flex min-w-0 items-center gap-3">
               <button
+                type="button"
                 onClick={toggleSelectAll}
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="shrink-0 text-sm text-gray-600 hover:text-gray-900"
               >
                 {selectedNotifications.length === notifications.length
                   ? "Deselect All"
                   : "Select All"}
               </button>
-              <span className="text-sm text-gray-500">
+              <span className="truncate text-sm text-gray-500">
                 {selectedNotifications.length} selected
               </span>
             </div>
