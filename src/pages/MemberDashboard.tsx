@@ -1041,20 +1041,27 @@ const MemberDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* 选择模式工具栏 */}
+        {/* 选择模式工具栏 — checkbox 全选，和 Admin 批量一致 */}
         {isSelectionMode && notifications.length > 0 && (
           <div className="-mx-3 flex items-center justify-between gap-2 border-y border-gray-100 bg-gray-50 px-3 py-2 md:-mx-4 md:px-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                type="button"
-                onClick={toggleSelectAll}
-                className="shrink-0 text-sm text-gray-600 hover:text-gray-900"
-              >
-                {selectedNotifications.length === notifications.length
-                  ? "Deselect All"
-                  : "Select All"}
-              </button>
-              <span className="truncate text-sm text-gray-500">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <input
+                type="checkbox"
+                checked={
+                  notifications.length > 0 &&
+                  selectedNotifications.length === notifications.length
+                }
+                ref={(el) => {
+                  if (!el) return;
+                  el.indeterminate =
+                    selectedNotifications.length > 0 &&
+                    selectedNotifications.length < notifications.length;
+                }}
+                onChange={toggleSelectAll}
+                aria-label="Select all notifications"
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="truncate text-xs font-medium tabular-nums text-gray-500 md:text-sm">
                 {selectedNotifications.length} selected
               </span>
             </div>
@@ -1062,22 +1069,10 @@ const MemberDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={deleteSelectedNotifications}
-                className="rounded-full p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                className="rounded-md px-2 py-1 text-sm font-semibold text-red-600 hover:bg-white"
                 aria-label="Delete selected"
               >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                Delete
               </button>
             )}
           </div>
