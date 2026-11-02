@@ -1,0 +1,61 @@
+# Ping Supabase every 3 days so free-tier projects stay out of the
+# "inactive pause" window (~7 days with no activity).
+#
+# Setup (once the repo is on GitHub):
+# 1. Repo → Settings → Secrets and variables → Actions
+# 2. Add SUPABASE_URL        = https://xxxx.supabase.co
+# 3. Add SUPABASE_ANON_KEY   = your anon public key (same as VITE_SUPABASE_ANON_KEY)
+# 4. Actions → "Keep Supabase alive" → Run workflow (optional test)
+
+name: Keep Supabase alive
+
+on:
+  schedule:
+    # Every 3 days at 08:00 UTC (~16:00 Malaysia time)
+    - cron: "0 8 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping Supabase REST
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+            echo "Missing secrets SUPABASE_URL / SUPABASE_ANON_KEY"
+            exit 1
+          fi
+
+          BASE="${SUPABASE_URL%/}"
+
+          echo "Health check…"
+          curl -fsS --retry 3 --retry-delay 2 \
+            "${BASE}/auth/v1/health" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -o /tmp/supabase-health.json
+          cat /tmp/supabase-health.json
+          echo
+
+          echo "Light REST probe…"
+          # Any successful authenticated REST call counts as project activity.
+          # 200 or 206/empty is fine; 404 table means URL/key still reached the API.
+          CODE=$(curl -sS -o /tmp/supabase-rest.txt -w "%{http_code}" --retry 2 \
+            "${BASE}/rest/v1/" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+          echo "REST status: ${CODE}"
+          head -c 200 /tmp/supabase-rest.txt || true
+          echo
+
+          case "${CODE}" in
+            2*|404|401) echo "Supabase reachable — keep-alive OK" ;;
+            *)
+              echo "Unexpected status ${CODE}"
+              exit 1
+              ;;
+          esac

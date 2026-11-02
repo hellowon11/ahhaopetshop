@@ -1,0 +1,21 @@
+<!--
+  EmailJS → Email Templates → template_yxcxsx3（顾客的 Appointment Confirmed）
+
+  把粉色的 “Your booking summary” 那一块整段换成下面这个表格。
+  {{message}} 由网站送出，内容是：
+
+  Full Grooming
+
+  Date: October 23, 2026 at 12:00 PM
+  Pet Name: mochi (Dog)
+  Price: RM 120.00
+-->
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;border:1px solid #fecdd3;border-radius:12px;background-color:#fff7f7;">
+  <tr>
+    <td style="padding:18px 20px 16px 20px;font-family:Arial,Helvetica,sans-serif;">
+      <p style="margin:0 0 12px 0;font-size:15px;font-weight:700;color:#e11d48;">Your booking summary</p>
+      <p style="margin:0;font-size:15px;line-height:1.7;color:#111827;white-space:pre-line;">{{message}}</p>
+    </td>
+  </tr>
+</table>

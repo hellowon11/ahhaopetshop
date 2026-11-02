@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* In-page section jumps set smooth via JS; keep default auto so route changes don't animate from mid-page */
+html {
+  scroll-behavior: auto;
+}
+
+body {
+  @apply bg-white font-sans antialiased;
+}
+
+/* iPhone home-indicator safe padding helpers (mobile sticky bars) */
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Empty date fields: hide the browser hint so one dd/mm/yyyy label shows on phones too. */
+.date-hint-empty::-webkit-datetime-edit,
+.date-hint-empty::-webkit-datetime-edit-fields-wrapper,
+.date-hint-empty::-webkit-datetime-edit-text,
+.date-hint-empty::-webkit-datetime-edit-month-field,
+.date-hint-empty::-webkit-datetime-edit-day-field,
+.date-hint-empty::-webkit-datetime-edit-year-field {
+  color: transparent;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+.animate-fade-in-out {
+  animation: fadeInOut 3s ease-in-out;
+}
+
+.social-icon-btn {
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+.social-icon-btn:hover {
+  transform: translateY(-3px) scale(1.04);
+  filter: brightness(1.06);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.social-icon-btn:active {
+  transform: translateY(0) scale(0.96);
+  box-shadow: none;
+}
+
+@keyframes pet-strip-from-right {
+  from {
+    opacity: 0.45;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pet-strip-from-left {
+  from {
+    opacity: 0.45;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.pet-strip-from-right {
+  animation: pet-strip-from-right 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pet-strip-from-left {
+  animation: pet-strip-from-left 340ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-strip-from-right,
+  .pet-strip-from-left {
+    animation: none;
+  }
+} 

@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: ahhaopetshop-frontend
+    env: static
+    buildCommand: npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: 18.0.0
+    headers:
+      - path: /**/*.css
+        name: Content-Type
+        value: text/css
+      - path: /**/*.js
+        name: Content-Type
+        value: application/javascript
+      - path: /**/*.jpg
+        name: Content-Type
+        value: image/jpeg
+      - path: /**/*.png
+        name: Content-Type
+        value: image/png
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html 

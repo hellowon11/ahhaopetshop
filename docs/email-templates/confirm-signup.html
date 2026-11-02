@@ -1,0 +1,68 @@
+<!--
+  Supabase → Authentication → Email Templates → Confirm sign up
+
+  Subject:
+  Confirm your AH HAO PET SHOP account
+
+  Body：从 <!DOCTYPE 贴到结尾（含 {{ .ConfirmationURL }}）
+  若模板锁着改不了：点 Reset to default 即可（默认就是确认链接）
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirm your email</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#ffffff;font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;padding:28px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:480px;background-color:#ffffff;">
+            <tr>
+              <td align="center" style="padding:8px 0 20px 0;">
+                <img
+                  src="https://vfiamrtcnywatisguqre.supabase.co/storage/v1/object/public/Branding/logo.png"
+                  alt="AH HAO PET SHOP"
+                  width="96"
+                  style="display:block;width:96px;max-width:36%;height:auto;margin:0 auto;border:0;"
+                />
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:0 8px;">
+                <h1 style="margin:0;font-size:18px;line-height:1.4;color:#111827;font-weight:700;text-align:center;">
+                  Confirm your email
+                </h1>
+                <p style="margin:8px 0 0 0;font-size:14px;line-height:1.55;color:#6b7280;text-align:center;">
+                  Click the button below to finish creating your member account.
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td align="center" style="padding:28px 8px 8px 8px;">
+                <a
+                  href="{{ .ConfirmationURL }}"
+                  style="display:inline-block;background-color:#e11d48;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 28px;border-radius:12px;"
+                >
+                  Confirm email
+                </a>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:24px 8px 8px 8px;">
+                <p style="margin:0;font-size:12px;line-height:1.55;color:#9ca3af;text-align:center;">
+                  If you didn’t create an account at AH HAO PET SHOP, you can ignore this email.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
