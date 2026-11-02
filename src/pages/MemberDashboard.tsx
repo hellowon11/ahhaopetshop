@@ -1194,7 +1194,7 @@ const MemberDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-white">
       {isRefreshing && (
         <div className="fixed top-0 left-0 right-0 z-[55] h-0.5 overflow-hidden bg-rose-100">
           <div className="h-full w-1/3 animate-pulse bg-rose-500" />
