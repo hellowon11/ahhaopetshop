@@ -15,9 +15,10 @@ export const FALLBACK_SUPPLIES: PetSupply[] = [
   },
   {
     _id: "local-2",
-    name: "Daily Dog Food",
+    name: "Pedigree Biscrok",
     category: "dog-food",
-    description: "Balanced dry food for adult dogs — complete daily nutrition.",
+    description:
+      "Crunchy dog biscuits for everyday snacks and training rewards.",
     price: 65,
     displayPrice: "RM 65",
     imageUrl: "/imgs/supplies-dog-food.jpg",
@@ -26,9 +27,9 @@ export const FALLBACK_SUPPLIES: PetSupply[] = [
   },
   {
     _id: "local-3",
-    name: "Daily Cat Food",
+    name: "Whiskas Adult",
     category: "cat-food",
-    description: "Premium dry food formulated for indoor and outdoor cats.",
+    description: "Complete dry food with chicken — made for adult cats.",
     price: 55,
     displayPrice: "RM 55",
     imageUrl: "/imgs/supplies-cat-food.jpg",

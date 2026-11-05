@@ -533,11 +533,11 @@ const MainApp: React.FC = () => {
           <div className="container mx-auto px-4 py-5 sm:px-6 sm:py-16">
             <div className="flex flex-col items-center justify-between gap-5 sm:gap-8 lg:flex-row lg:gap-12">
               <div className="mt-1 w-full space-y-3.5 text-center sm:mt-0 sm:space-y-6 lg:w-1/2 lg:text-left">
-                <h1 className="text-[1.75rem] font-bold leading-snug text-gray-900 min-[390px]:text-3xl sm:text-5xl sm:leading-tight lg:text-6xl">
+                <h1 className="text-2xl font-bold leading-snug text-gray-900 sm:text-5xl sm:leading-tight lg:text-6xl">
                   Welcome to <span className="text-rose-600">AH HAO</span> PET
                   SHOP
                 </h1>
-                <p className="mx-auto max-w-2xl text-[15px] text-gray-600 sm:mx-0 sm:text-xl">
+                <p className="mx-auto max-w-2xl text-sm text-gray-600 sm:mx-0 sm:text-xl">
                   Your trusted partner in pet care and happiness
                 </p>
                 <div className="flex flex-col justify-center gap-2.5 sm:flex-row sm:gap-4 lg:justify-start">
@@ -545,7 +545,7 @@ const MainApp: React.FC = () => {
                     onClick={() => handleNavigate("/grooming-appointment")}
                     onMouseEnter={() => void prefetchGroomingServices()}
                     onFocus={() => void prefetchGroomingServices()}
-                    className="rounded-xl bg-rose-600 px-5 py-3 text-[15px] font-medium text-white shadow-lg transition-colors duration-300 hover:-translate-y-1 hover:bg-rose-700 hover:shadow-xl sm:rounded-lg sm:px-6 sm:text-base"
+                    className="rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-medium text-white shadow-lg transition-colors duration-300 hover:-translate-y-1 hover:bg-rose-700 hover:shadow-xl sm:rounded-lg sm:px-6 sm:py-3 sm:text-base"
                   >
                     Book Grooming Service
                   </button>
@@ -553,7 +553,7 @@ const MainApp: React.FC = () => {
                     onClick={() => handleNavigate("/all-pets", true)}
                     onMouseEnter={() => void prefetchShopPets()}
                     onFocus={() => void prefetchShopPets()}
-                    className="rounded-xl border-2 border-rose-600 bg-white px-5 py-3 text-[15px] font-medium text-rose-600 shadow-lg transition-colors duration-300 hover:-translate-y-1 hover:bg-rose-50 hover:shadow-xl sm:rounded-lg sm:px-6 sm:text-base"
+                    className="rounded-xl border-2 border-rose-600 bg-white px-5 py-2.5 text-sm font-medium text-rose-600 shadow-lg transition-colors duration-300 hover:-translate-y-1 hover:bg-rose-50 hover:shadow-xl sm:rounded-lg sm:px-6 sm:py-3 sm:text-base"
                   >
                     Meet Our Pets
                   </button>
@@ -561,7 +561,7 @@ const MainApp: React.FC = () => {
               </div>
               {/* Image grid — shorter on phones so first screen isn’t all tiles */}
               <div className="mt-1 w-full lg:mt-0 lg:w-1/2">
-                <div className="grid h-[248px] grid-rows-2 gap-2.5 min-[390px]:h-[272px] min-[430px]:h-[300px] sm:h-[400px] sm:gap-4 lg:h-[500px]">
+                <div className="grid h-[300px] grid-rows-2 gap-2.5 min-[390px]:h-[328px] min-[430px]:h-[360px] sm:h-[400px] sm:gap-4 lg:h-[500px]">
                   <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
                     <button
                       type="button"
@@ -577,7 +577,7 @@ const MainApp: React.FC = () => {
                       />
                       <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/75 via-black/35 to-transparent sm:h-32">
                         <div className="absolute bottom-2 left-2.5 sm:bottom-2 sm:left-4">
-                          <h3 className="text-base font-bold text-white min-[390px]:text-lg sm:text-2xl">
+                          <h3 className="text-sm font-bold text-white sm:text-2xl">
                             Cute Pets
                           </h3>
                           <p className="hidden text-sm text-gray-200 opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:block">
@@ -600,7 +600,7 @@ const MainApp: React.FC = () => {
                       />
                       <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/75 via-black/35 to-transparent sm:h-32">
                         <div className="absolute bottom-2 left-2.5 sm:bottom-2 sm:left-4">
-                          <h3 className="text-base font-bold text-white min-[390px]:text-lg sm:text-2xl">
+                          <h3 className="text-sm font-bold text-white sm:text-2xl">
                             Grooming
                           </h3>
                           <p className="hidden text-sm text-gray-200 opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:block">
@@ -625,7 +625,7 @@ const MainApp: React.FC = () => {
                       />
                       <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/75 via-black/35 to-transparent sm:h-32">
                         <div className="absolute bottom-2 left-2.5 sm:bottom-2 sm:left-4">
-                          <h3 className="text-base font-bold text-white min-[390px]:text-lg sm:text-2xl">
+                          <h3 className="text-sm font-bold text-white sm:text-2xl">
                             Pet Supplies
                           </h3>
                           <p className="hidden text-sm text-gray-200 opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:block">
@@ -646,7 +646,7 @@ const MainApp: React.FC = () => {
                       />
                       <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/75 via-black/35 to-transparent sm:h-32">
                         <div className="absolute bottom-2 left-2.5 sm:bottom-2 sm:left-4">
-                          <h3 className="text-base font-bold text-white min-[390px]:text-lg sm:text-2xl">
+                          <h3 className="text-sm font-bold text-white sm:text-2xl">
                             Pet Daycare
                           </h3>
                           <p className="hidden text-sm text-gray-200 opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:block">
@@ -675,10 +675,10 @@ const MainApp: React.FC = () => {
                 />
               </div>
               <div>
-                <h2 className="text-2xl font-bold tracking-tight text-gray-900 min-[390px]:text-[1.75rem] sm:text-4xl">
+                <h2 className="text-xl font-bold tracking-tight text-gray-900 sm:text-4xl">
                   A neighbourhood pet shop that feels like home
                 </h2>
-                <p className="mt-3 max-w-md text-[15px] leading-relaxed text-gray-600 sm:mt-4 sm:text-lg">
+                <p className="mt-3 max-w-md text-sm leading-relaxed text-gray-600 sm:mt-4 sm:text-lg">
                   Based in Bukit Jalil, AH HAO Pet Shop helps you find a healthy
                   pet, and we are here to take good care of the one you already
                   love.
@@ -704,10 +704,10 @@ const MainApp: React.FC = () => {
                       key={item.title}
                       className="rounded-xl bg-gray-50 px-4 py-3 sm:px-5 sm:py-4"
                     >
-                      <p className="text-[15px] font-medium text-gray-900 sm:text-base">
+                      <p className="text-sm font-medium text-gray-900 sm:text-base">
                         {item.title}
                       </p>
-                      <p className="mt-0.5 text-sm text-gray-500">
+                      <p className="mt-0.5 text-xs text-gray-500 sm:text-sm">
                         {item.text}
                       </p>
                     </div>
@@ -721,7 +721,7 @@ const MainApp: React.FC = () => {
         {/* Services — text cards (hero already has image shortcuts) */}
         <section id="services" className="bg-gray-50 py-10 sm:py-20">
           <div className="container mx-auto px-4 sm:px-6">
-            <h2 className="mb-5 text-center text-2xl font-bold tracking-tight text-gray-900 min-[390px]:text-[1.75rem] sm:mb-10 sm:text-4xl">
+            <h2 className="mb-5 text-center text-xl font-bold tracking-tight text-gray-900 sm:mb-10 sm:text-4xl">
               Our Services
             </h2>
             <div className="mx-auto grid max-w-6xl grid-cols-1 gap-3.5 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4 lg:gap-6">
@@ -733,7 +733,7 @@ const MainApp: React.FC = () => {
                 className="rounded-2xl bg-white p-5 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md sm:p-6"
               >
                 <Dog className="mb-4 h-8 w-8 text-rose-600" />
-                <h3 className="mb-2 text-xl font-semibold text-gray-900">
+                <h3 className="mb-1.5 text-base font-semibold text-gray-900 sm:mb-2 sm:text-xl">
                   Quality Dogs & Cats
                 </h3>
                 <p className="text-sm leading-relaxed text-gray-600 sm:text-base">
@@ -750,7 +750,7 @@ const MainApp: React.FC = () => {
                 className="rounded-2xl bg-white p-5 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md sm:p-6"
               >
                 <Scissors className="mb-4 h-8 w-8 text-rose-600" />
-                <h3 className="mb-2 text-xl font-semibold text-gray-900">
+                <h3 className="mb-1.5 text-base font-semibold text-gray-900 sm:mb-2 sm:text-xl">
                   Premium Grooming
                 </h3>
                 <p className="text-sm leading-relaxed text-gray-600 sm:text-base">
@@ -765,7 +765,7 @@ const MainApp: React.FC = () => {
                 className="rounded-2xl bg-white p-5 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md sm:p-6"
               >
                 <Home className="mb-4 h-8 w-8 text-rose-600" />
-                <h3 className="mb-2 text-xl font-semibold text-gray-900">
+                <h3 className="mb-1.5 text-base font-semibold text-gray-900 sm:mb-2 sm:text-xl">
                   Pet Daycare
                 </h3>
                 <p className="text-sm leading-relaxed text-gray-600 sm:text-base">
@@ -781,7 +781,7 @@ const MainApp: React.FC = () => {
                 className="rounded-2xl bg-white p-5 text-left shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md sm:p-6"
               >
                 <ShoppingBag className="mb-4 h-8 w-8 text-rose-600" />
-                <h3 className="mb-2 text-xl font-semibold text-gray-900">
+                <h3 className="mb-1.5 text-base font-semibold text-gray-900 sm:mb-2 sm:text-xl">
                   Pet Supplies
                 </h3>
                 <p className="text-sm leading-relaxed text-gray-600 sm:text-base">
@@ -803,14 +803,14 @@ const MainApp: React.FC = () => {
               <div className="flex flex-col items-center lg:grid lg:grid-cols-2 lg:gap-16">
                 {/* Text — below image on mobile; left on desktop */}
                 <div className="order-2 w-full lg:order-1 lg:pr-8">
-                  <h2 className="mb-3 text-2xl font-bold text-gray-900 min-[390px]:text-[1.75rem] sm:mb-6 sm:text-4xl">
+                  <h2 className="mb-2.5 text-xl font-bold text-gray-900 sm:mb-6 sm:text-4xl">
                     Premium Grooming
                   </h2>
-                  <p className="mb-4 text-[15px] leading-relaxed text-gray-600 sm:mb-8 sm:text-lg">
+                  <p className="mb-3.5 text-sm leading-relaxed text-gray-600 sm:mb-8 sm:text-lg">
                     From basic baths to luxury spa treatments, we offer
                     professional grooming services for all breeds.
                   </p>
-                  <p className="mb-5 text-lg font-semibold text-gray-900 sm:mb-8 sm:text-xl">
+                  <p className="mb-4 text-base font-semibold text-gray-900 sm:mb-8 sm:text-xl">
                     Starting from RM60
                   </p>
                   <button
@@ -818,7 +818,7 @@ const MainApp: React.FC = () => {
                     onClick={() =>
                       handleNavigate("/grooming-appointment", false, true)
                     }
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-8 py-3 text-base font-medium text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-rose-700 hover:shadow-xl sm:w-auto sm:text-lg"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-8 py-2.5 text-sm font-medium text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-rose-700 hover:shadow-xl sm:w-auto sm:py-3 sm:text-lg"
                   >
                     Book appointment
                     <ArrowRight className="h-5 w-5" />
@@ -856,21 +856,21 @@ const MainApp: React.FC = () => {
                 </div>
               </div>
               <div className="order-2 lg:order-2 lg:pl-2">
-                <h2 className="mb-3 text-2xl font-bold text-gray-900 min-[390px]:text-[1.75rem] sm:mb-6 sm:text-4xl">
+                <h2 className="mb-2.5 text-xl font-bold text-gray-900 sm:mb-6 sm:text-4xl">
                   Pet Daycare
                 </h2>
-                <p className="mb-4 text-[15px] leading-relaxed text-gray-600 sm:mb-6 sm:text-lg">
+                <p className="mb-3.5 text-sm leading-relaxed text-gray-600 sm:mb-6 sm:text-lg">
                   Comfortable dog and cat hotel services with 24/7 care and
                   attention. Your pets can play and socialize with other dogs
                   and cats in our supervised play areas.
                 </p>
-                <p className="mb-5 text-lg font-semibold text-gray-900 sm:mb-8 sm:text-xl">
+                <p className="mb-4 text-base font-semibold text-gray-900 sm:mb-8 sm:text-xl">
                   From RM70 / day
                 </p>
                 <button
                   type="button"
                   onClick={() => handleNavigate("/daycare")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-8 py-3 text-base font-medium text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-rose-700 hover:shadow-xl sm:w-auto sm:text-lg"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-8 py-2.5 text-sm font-medium text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-rose-700 hover:shadow-xl sm:w-auto sm:py-3 sm:text-lg"
                 >
                   Explore Daycare
                   <ArrowRight className="h-5 w-5" />
@@ -886,10 +886,10 @@ const MainApp: React.FC = () => {
             {/* —— Mobile: title → toggle → horizontal cards → CTA —— */}
             <div className="md:hidden">
               <div className="px-6 text-center">
-                <h2 className="text-2xl font-bold text-gray-900">
+                <h2 className="text-xl font-bold text-gray-900">
                   Meet Our Pets
                 </h2>
-                <p className="mt-1.5 text-sm text-gray-500">
+                <p className="mt-1.5 text-xs text-gray-500">
                   Fully vaccinated · ready for forever homes
                 </p>
                 <div
@@ -912,7 +912,7 @@ const MainApp: React.FC = () => {
                         setMobilePetSlide("dog");
                         setSelectedPetType("dog");
                       }}
-                      className={`relative z-10 inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors duration-300 ${
+                      className={`relative z-10 inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-300 ${
                         selectedPetType === "dog"
                           ? "text-gray-900"
                           : "text-gray-500"
@@ -927,7 +927,7 @@ const MainApp: React.FC = () => {
                         setMobilePetSlide("cat");
                         setSelectedPetType("cat");
                       }}
-                      className={`relative z-10 inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors duration-300 ${
+                      className={`relative z-10 inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-300 ${
                         selectedPetType === "cat"
                           ? "text-gray-900"
                           : "text-gray-500"
@@ -974,7 +974,7 @@ const MainApp: React.FC = () => {
                       state: { initialType: selectedPetType },
                     })
                   }
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-6 py-3 text-base font-medium text-white shadow-md transition hover:bg-rose-700"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-6 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-rose-700"
                 >
                   See All Pets
                   <ArrowRight className="h-4 w-4" />
@@ -1045,7 +1045,7 @@ const MainApp: React.FC = () => {
         {/* Contact Section */}
         <section id="contact" className="bg-white py-10 md:py-16">
           <div className="container mx-auto px-4 sm:px-6">
-            <h2 className="mb-6 text-center text-2xl font-bold text-gray-800 min-[390px]:text-[1.75rem] sm:text-4xl md:mb-12">
+            <h2 className="mb-6 text-center text-xl font-bold text-gray-800 sm:text-4xl md:mb-12">
               Contact Us
             </h2>
             <div className="mx-auto grid max-w-6xl grid-cols-1 items-start gap-8 md:grid-cols-2 md:gap-12">
@@ -1054,10 +1054,10 @@ const MainApp: React.FC = () => {
                 <div className="flex items-center">
                   <Phone className="mr-4 h-6 w-6 flex-shrink-0 text-rose-600" />
                   <div>
-                    <h3 className="text-lg font-semibold">Phone</h3>
+                    <h3 className="text-base font-semibold sm:text-lg">Phone</h3>
                     <a
                       href="tel:+60102568641"
-                      className="text-gray-600 transition hover:text-rose-600 hover:underline"
+                      className="text-sm text-gray-600 transition hover:text-rose-600 hover:underline sm:text-base"
                     >
                       +6010-2568641
                     </a>
@@ -1066,10 +1066,10 @@ const MainApp: React.FC = () => {
                 <div className="flex items-center">
                   <Mail className="mr-4 h-6 w-6 flex-shrink-0 text-rose-600" />
                   <div>
-                    <h3 className="text-lg font-semibold">Email</h3>
+                    <h3 className="text-base font-semibold sm:text-lg">Email</h3>
                     <a
                       href="mailto:ahhaopetshop@gmail.com"
-                      className="text-gray-600 transition hover:text-rose-600 hover:underline"
+                      className="text-sm text-gray-600 transition hover:text-rose-600 hover:underline sm:text-base"
                     >
                       ahhaopetshop@gmail.com
                     </a>
@@ -1078,23 +1078,25 @@ const MainApp: React.FC = () => {
                 <div className="flex items-center">
                   <Clock className="mr-4 h-6 w-6 flex-shrink-0 text-rose-600" />
                   <div>
-                    <h3 className="text-lg font-semibold">Hours</h3>
-                    <p className="text-gray-600">Mon-Sun 10AM-10PM</p>
+                    <h3 className="text-base font-semibold sm:text-lg">Hours</h3>
+                    <p className="text-sm text-gray-600 sm:text-base">
+                      Mon-Sun 10AM-10PM
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center">
                   <Share2 className="mr-4 h-6 w-6 flex-shrink-0 text-rose-600" />
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2 sm:gap-2.5">
                     <a
                       href="https://wa.me/60102568641?text=Hi%20AH%20HAO%20Pet%20Shop"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="social-icon-btn inline-flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#25D366] text-white"
+                      className="social-icon-btn inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#25D366] text-white sm:h-10 sm:w-10 sm:rounded-[12px]"
                       aria-label="Chat on WhatsApp"
                     >
                       <svg
                         viewBox="0 0 24 24"
-                        className="h-5 w-5"
+                        className="h-4 w-4 sm:h-5 sm:w-5"
                         fill="currentColor"
                         aria-hidden
                       >
@@ -1105,12 +1107,12 @@ const MainApp: React.FC = () => {
                       href="https://web.facebook.com/jie.hao.14"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="social-icon-btn inline-flex h-10 w-10 items-center justify-center rounded-[12px] bg-[#1877F2] text-white"
+                      className="social-icon-btn inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#1877F2] text-white sm:h-10 sm:w-10 sm:rounded-[12px]"
                       aria-label="Visit our Facebook page"
                     >
                       <svg
                         viewBox="0 0 24 24"
-                        className="h-5 w-5"
+                        className="h-4 w-4 sm:h-5 sm:w-5"
                         fill="currentColor"
                         aria-hidden
                       >
@@ -1121,12 +1123,12 @@ const MainApp: React.FC = () => {
                       href="https://www.instagram.com/jiehao_08/"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="social-icon-btn inline-flex h-10 w-10 items-center justify-center rounded-[12px] bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] text-white"
+                      className="social-icon-btn inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] text-white sm:h-10 sm:w-10 sm:rounded-[12px]"
                       aria-label="Visit our Instagram page"
                     >
                       <svg
                         viewBox="0 0 24 24"
-                        className="h-5 w-5"
+                        className="h-4 w-4 sm:h-5 sm:w-5"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2"
@@ -1149,8 +1151,12 @@ const MainApp: React.FC = () => {
                   <div className="mb-4 flex items-start">
                     <MapPin className="mr-4 mt-1 h-6 w-6 flex-shrink-0 text-rose-600" />
                     <div>
-                      <h3 className="text-lg font-semibold">Address</h3>
-                      <p className="text-gray-600">{address}</p>
+                      <h3 className="text-base font-semibold sm:text-lg">
+                        Address
+                      </h3>
+                      <p className="text-sm text-gray-600 sm:text-base">
+                        {address}
+                      </p>
                     </div>
                   </div>
                   <div className="h-52 w-full overflow-hidden rounded-xl shadow-md sm:h-64 sm:rounded-lg">
@@ -1177,7 +1183,7 @@ const MainApp: React.FC = () => {
                         strokeWidth={2.25}
                       />
                     </div>
-                    <h3 className="mt-4 text-xl font-bold tracking-tight text-gray-900">
+                    <h3 className="mt-4 text-lg font-bold tracking-tight text-gray-900 sm:text-xl">
                       Message sent
                     </h3>
                     <p className="mt-2 max-w-xs text-sm leading-relaxed text-gray-600">
@@ -1336,7 +1342,7 @@ const MainApp: React.FC = () => {
                     <button
                       type="submit"
                       disabled={formStatus === "sending"}
-                      className="mt-auto w-full rounded-xl bg-rose-600 py-3 px-4 font-bold text-white transition duration-300 hover:bg-rose-700 disabled:opacity-50"
+                      className="mt-auto w-full rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-bold text-white transition duration-300 hover:bg-rose-700 disabled:opacity-50 sm:py-3 sm:text-base"
                     >
                       {formStatus === "sending" ? "Sending..." : "Send Message"}
                     </button>

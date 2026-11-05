@@ -134,12 +134,28 @@ function isForSaleFromStatus(status: string | undefined): boolean {
   return (status || "Listed") === "Listed";
 }
 
+const SUPPLY_NAME_ALIASES: Record<
+  string,
+  { name: string; description: string }
+> = {
+  "Daily Dog Food": {
+    name: "Pedigree Biscrok",
+    description:
+      "Crunchy dog biscuits for everyday snacks and training rewards.",
+  },
+  "Daily Cat Food": {
+    name: "Whiskas Adult",
+    description: "Complete dry food with chicken — made for adult cats.",
+  },
+};
+
 function mapPetSupply(row: any): PetSupply {
+  const alias = SUPPLY_NAME_ALIASES[row.name as string];
   return {
     _id: row.id,
-    name: row.name,
+    name: alias?.name ?? row.name,
     category: row.category,
-    description: row.description || "",
+    description: alias?.description ?? row.description ?? "",
     price: Number(row.price),
     displayPrice: row.display_price,
     imageUrl: row.image_url,
@@ -1219,7 +1235,7 @@ export const apiService = {
         .delete()
         .eq("id", id);
       if (error) throw error;
-      return true;
+        return true;
     },
   },
 

@@ -161,16 +161,27 @@ const AllPets: React.FC = () => {
 
   const sortPets = (petsToSort: Pet[]): Pet[] => {
     let sortedPets = [...petsToSort];
+    // Dogs (D…) before cats (C…) — old "#" check put C before D
+    const byType = (a: Pet, b: Pet) => {
+      if (a.type === b.type) return 0;
+      return a.type === "dog" ? -1 : 1;
+    };
 
     switch (sortBy) {
       case "name":
-        sortedPets.sort((a, b) => a.name.localeCompare(b.name));
+        sortedPets.sort(
+          (a, b) => byType(a, b) || a.name.localeCompare(b.name),
+        );
         break;
       case "breed":
-        sortedPets.sort((a, b) => a.breed.localeCompare(b.breed));
+        sortedPets.sort(
+          (a, b) => byType(a, b) || a.breed.localeCompare(b.breed),
+        );
         break;
       case "age":
         sortedPets.sort((a, b) => {
+          const typeOrder = byType(a, b);
+          if (typeOrder !== 0) return typeOrder;
           const getMonths = (ageStr: string): number => {
             const years = ageStr.match(/(\d+)\s*year/i);
             const months = ageStr.match(/(\d+)\s*month/i);
@@ -186,24 +197,23 @@ const AllPets: React.FC = () => {
         });
         break;
       case "gender":
-        sortedPets.sort((a, b) => a.gender.localeCompare(b.gender));
+        sortedPets.sort(
+          (a, b) => byType(a, b) || a.gender.localeCompare(b.gender),
+        );
         break;
       case "petId":
-        // Sort by petId - specific handling for format #XXX and CXXX
         sortedPets.sort((a, b) => {
-          // First separate by type - dogs (#) come before cats (C)
-          if (a.petId[0] !== b.petId[0]) {
-            return a.petId[0] === "#" ? -1 : 1;
-          }
-          // Then sort numerically by the number part
-          const numA = parseInt(a.petId.replace(/[^0-9]/g, ""));
-          const numB = parseInt(b.petId.replace(/[^0-9]/g, ""));
+          const typeOrder = byType(a, b);
+          if (typeOrder !== 0) return typeOrder;
+          const numA = parseInt(a.petId.replace(/[^0-9]/g, ""), 10) || 0;
+          const numB = parseInt(b.petId.replace(/[^0-9]/g, ""), 10) || 0;
           return numA - numB;
         });
         break;
       default:
-        // Default sorting: sort by name
-        sortedPets.sort((a, b) => a.name.localeCompare(b.name));
+        sortedPets.sort(
+          (a, b) => byType(a, b) || a.name.localeCompare(b.name),
+        );
     }
 
     return sortedPets;

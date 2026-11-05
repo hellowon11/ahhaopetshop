@@ -37,8 +37,8 @@ insert into public.pet_supplies (name, category, description, price, display_pri
 select v.name, v.category, v.description, v.price, v.display_price, v.image_url, v.sort_order
 from (values
   ('Crunchy Dog Biscuits', 'treats', 'Oven-baked biscuits for everyday rewards and training.', 18::numeric, 'RM 18', '/imgs/supplies-dog-biscuits.jpg', 1),
-  ('Daily Dog Food', 'dog-food', 'Balanced dry food for adult dogs — complete daily nutrition.', 65::numeric, 'RM 65', '/imgs/supplies-dog-food.jpg', 2),
-  ('Daily Cat Food', 'cat-food', 'Premium dry food formulated for indoor and outdoor cats.', 55::numeric, 'RM 55', '/imgs/supplies-cat-food.jpg', 3),
+  ('Pedigree Biscrok', 'dog-food', 'Crunchy dog biscuits for everyday snacks and training rewards.', 65::numeric, 'RM 65', '/imgs/supplies-dog-food.jpg', 2),
+  ('Whiskas Adult', 'cat-food', 'Complete dry food with chicken — made for adult cats.', 55::numeric, 'RM 55', '/imgs/supplies-cat-food.jpg', 3),
   ('Soft Cat Treats', 'treats', 'Soft bite-sized snacks cats love between meals.', 15::numeric, 'RM 15', '/imgs/supplies-cat-treats.jpg', 4),
   ('Play Rope & Ball Set', 'toys', 'Durable rope toy and bounce ball for active playtime.', 28::numeric, 'RM 28', '/imgs/supplies-dog-toys.jpg', 5),
   ('Feather Wand & Mouse', 'toys', 'Interactive wand and plush mouse for curious cats.', 22::numeric, 'RM 22', '/imgs/supplies-cat-toys.jpg', 6)

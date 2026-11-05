@@ -333,9 +333,17 @@ const Login: React.FC = () => {
   };
 
   const handleBackToHome = () => {
+    // Register (or post-signup verify) → Sign in first
+    if (isRegistering || awaitingVerification) {
+      setIsRegistering(false);
+      setAwaitingVerification(false);
+      setError("");
+      return;
+    }
+
     sessionStorage.removeItem("fromGroomingRegister");
     const returnToBooking = sessionStorage.getItem("returnToBooking");
-    if (!isRegistering && returnToBooking === "true") {
+    if (returnToBooking === "true") {
       sessionStorage.removeItem("returnToBooking");
       navigate("/grooming-appointment");
       return;

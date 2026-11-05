@@ -486,10 +486,10 @@ const Navigation: React.FC<NavigationProps> = ({ onSectionClick }) => {
                 <button
                   type="button"
                   onClick={handleSignIn}
-                  className="flex w-full items-center justify-between rounded-xl bg-rose-50 px-3 py-3 text-left text-[15px] font-semibold text-rose-700 transition active:bg-rose-100"
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left text-[15px] font-medium text-gray-800 transition active:bg-gray-50"
                 >
                   Sign In
-                  <span className="text-rose-400" aria-hidden>
+                  <span className="text-gray-400" aria-hidden>
                     →
                   </span>
                 </button>
