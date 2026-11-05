@@ -1,25 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 interface ChatDogHouseProps {
   phoneNumber: string;
 }
 
+const canHoverFine = () =>
+  typeof window !== "undefined" &&
+  window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
 /**
  * Floating WhatsApp entry — cute doghouse with WA badge.
- * Bone tip, blink, run-out, press-squish. One tap opens chat.
+ * One tap/click opens WhatsApp. Chat! tip only on desktop hover.
  */
 const ChatDogHouse: React.FC<ChatDogHouseProps> = ({ phoneNumber }) => {
   const [tipOpen, setTipOpen] = useState(false);
   const [squishing, setSquishing] = useState(false);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setTipOpen(true), 900);
-    const hide = window.setTimeout(() => setTipOpen(false), 4500);
-    return () => {
-      window.clearTimeout(t);
-      window.clearTimeout(hide);
-    };
-  }, []);
 
   const playSquish = () => {
     setSquishing(false);
@@ -113,10 +108,18 @@ const ChatDogHouse: React.FC<ChatDogHouseProps> = ({ phoneNumber }) => {
           type="button"
           onClick={openWhatsApp}
           onPointerDown={playSquish}
-          onMouseEnter={() => setTipOpen(true)}
-          onMouseLeave={() => setTipOpen(false)}
-          onFocus={() => setTipOpen(true)}
-          onBlur={() => setTipOpen(false)}
+          onMouseEnter={() => {
+            if (canHoverFine()) setTipOpen(true);
+          }}
+          onMouseLeave={() => {
+            if (canHoverFine()) setTipOpen(false);
+          }}
+          onFocus={() => {
+            if (canHoverFine()) setTipOpen(true);
+          }}
+          onBlur={() => {
+            if (canHoverFine()) setTipOpen(false);
+          }}
           aria-label="Chat with AH HAO Pet Shop on WhatsApp"
           className="doghouse-fab group relative isolate flex h-[4.75rem] w-[4.75rem] items-center justify-center rounded-full outline-none transition duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#25D366]/70 focus-visible:ring-offset-2 sm:h-[5.25rem] sm:w-[5.25rem]"
         >
