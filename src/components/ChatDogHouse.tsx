@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface ChatDogHouseProps {
   phoneNumber: string;
@@ -8,13 +8,53 @@ const canHoverFine = () =>
   typeof window !== "undefined" &&
   window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
+const TIP_SESSION_KEY = "ahhao-doghouse-tip-shows";
+const TIP_MAX_PER_SESSION = 2;
+const TIP_VISIBLE_MS = 3000;
+const TIP_FIRST_DELAY_MS = 900;
+const TIP_REPEAT_GAP_MS = 20000;
+
 /**
  * Floating WhatsApp entry — cute doghouse with WA badge.
- * One tap/click opens WhatsApp. Chat! tip only on desktop hover.
+ * One tap opens WhatsApp. Desktop: tip on hover.
+ * Mobile: Chat! peeks up to twice per browser session (3s each).
  */
 const ChatDogHouse: React.FC<ChatDogHouseProps> = ({ phoneNumber }) => {
   const [tipOpen, setTipOpen] = useState(false);
   const [squishing, setSquishing] = useState(false);
+
+  useEffect(() => {
+    if (canHoverFine()) return;
+
+    const shown = Number(sessionStorage.getItem(TIP_SESSION_KEY) || "0");
+    if (shown >= TIP_MAX_PER_SESSION) return;
+
+    const timers: number[] = [];
+    const peek = () => {
+      const n = Number(sessionStorage.getItem(TIP_SESSION_KEY) || "0");
+      if (n >= TIP_MAX_PER_SESSION) return;
+      sessionStorage.setItem(TIP_SESSION_KEY, String(n + 1));
+      setTipOpen(true);
+      timers.push(
+        window.setTimeout(() => setTipOpen(false), TIP_VISIBLE_MS),
+      );
+    };
+
+    timers.push(window.setTimeout(peek, TIP_FIRST_DELAY_MS));
+    // Same visit: one more peek later if this was the first of the session
+    if (shown === 0) {
+      timers.push(
+        window.setTimeout(
+          peek,
+          TIP_FIRST_DELAY_MS + TIP_VISIBLE_MS + TIP_REPEAT_GAP_MS,
+        ),
+      );
+    }
+
+    return () => {
+      timers.forEach((id) => window.clearTimeout(id));
+    };
+  }, []);
 
   const playSquish = () => {
     setSquishing(false);
